@@ -9,6 +9,7 @@ import { publicProcedure, router } from "./_core/trpc";
 import { storagePut } from "./storage";
 
 const categories = ["찬송가", "CCM"] as const;
+const colors = ["rose", "sage", "amber", "blue", "violet", "teal"];
 const songFields = z.object({
   title: z.string().trim().min(1).max(255),
   category: z.enum(categories),
@@ -22,6 +23,13 @@ const fileInput = z.object({
   fileData: z.string().min(1).max(68_000_000),
   fileSize: z.number().int().nonnegative().max(50_000_000),
 }).optional();
+
+const bulkFileInput = z.object({
+  fileName: z.string().min(1).max(255),
+  mimeType: z.string().max(120).default("application/octet-stream"),
+  fileData: z.string().min(1).max(68_000_000),
+  fileSize: z.number().int().nonnegative().max(50_000_000),
+});
 
 async function saveFile(file: z.infer<NonNullable<typeof fileInput>>) {
   if (!file) return {};
@@ -57,6 +65,17 @@ export const appRouter = router({
       const { file: fileInputValue, adminPassword: _adminPassword, ...songInput } = input;
       const file = await saveFile(fileInputValue);
       return createSong({ ...songInput, ...file });
+    }),
+    bulkCreate: publicProcedure.input(z.object({ adminPassword: z.string().min(1), category: z.enum(categories), files: z.array(bulkFileInput).min(1).max(700) })).mutation(async ({ input }) => {
+      assertAdminPassword(input.adminPassword);
+      const results = [];
+      for (let index = 0; index < input.files.length; index += 1) {
+        const file = input.files[index];
+        const stored = await saveFile(file);
+        const title = file.fileName.replace(/\.(pptx?|pdf)$/i, "").replace(/[_-]+/g, " ").trim();
+        results.push(await createSong({ title: title || `새 곡 ${index + 1}`, category: input.category, slideCount: 1, color: colors[index % colors.length], ...stored }));
+      }
+      return results;
     }),
     update: publicProcedure.input(z.object({ id: z.number().int().positive(), adminPassword: z.string().min(1), data: songFields.partial(), file: fileInput })).mutation(async ({ input }) => {
       assertAdminPassword(input.adminPassword);
