@@ -65,7 +65,7 @@ function AppLogo() {
     <div className="app-logo">
       <BrandMark />
       <div>
-        <div className="logo-name">찬양창고</div>
+        <div className="logo-name-row"><div className="logo-name">찬양창고</div><span className="logo-maker">K.E.Y제작</span></div>
         <div className="logo-subtitle">PRAISE ARCHIVE</div>
       </div>
     </div>
