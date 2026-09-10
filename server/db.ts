@@ -125,16 +125,3 @@ export async function deleteSong(id: number): Promise<void> {
   if (!db) throw new Error("Database is not available");
   await db.delete(songs).where(eq(songs.id, id));
 }
-
-export async function seedSongs(): Promise<void> {
-  const db = await getDb();
-  if (!db) return;
-  const existing = await db.select({ id: songs.id }).from(songs).limit(1);
-  if (existing.length > 0) return;
-  await db.insert(songs).values([
-    { title: "은혜", category: "CCM", tone: "G", slideCount: 4, color: "rose" },
-    { title: "축복하노라", category: "CCM", tone: "D", slideCount: 3, color: "sage" },
-    { title: "주의 약속하신 말씀 위에서", category: "찬송가", tone: "A", slideCount: 4, color: "blue" },
-    { title: "거룩하신 하나님", category: "CCM", tone: "E", slideCount: 2, color: "violet" },
-  ]);
-}
