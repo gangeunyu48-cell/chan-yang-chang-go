@@ -336,10 +336,33 @@ export default function Home() {
     try {
       const payload: FilePayload[] = [];
       for (const file of files) {
-        payload.push(await encodeFile(file));
-        setBulkProgress((current) => ({ ...current, done: Math.min(current.total, current.done + 1) }));
+        try {
+          payload.push(await encodeFile(file));
+        } catch {
+          throw new Error(`${file.name} 파일을 읽지 못했어요.`);
+        }
       }
-      await bulkCreate.mutateAsync({ adminPassword, category, files: payload });
+      // JSON 본문 제한을 피하기 위해 약 60MB 이하의 묶음으로 나눠 전송합니다.
+      const batches: FilePayload[][] = [];
+      let batch: FilePayload[] = [];
+      let batchSize = 0;
+      for (const item of payload) {
+        const itemSize = item.fileData.length;
+        if (batch.length && batchSize + itemSize > 60_000_000) {
+          batches.push(batch);
+          batch = [];
+          batchSize = 0;
+        }
+        batch.push(item);
+        batchSize += itemSize;
+      }
+      if (batch.length) batches.push(batch);
+      let completed = 0;
+      for (const currentBatch of batches) {
+        await bulkCreate.mutateAsync({ adminPassword, category, files: currentBatch });
+        completed += currentBatch.length;
+        setBulkProgress({ done: completed, total: files.length });
+      }
       await utils.songs.list.invalidate();
       toast.success(`${files.length}개 곡을 추가했어요.`);
       setBulkOpen(false);
