@@ -27,6 +27,7 @@ export const songs = mysqlTable("songs", {
   fileName: varchar("fileName", { length: 255 }),
   fileKey: text("fileKey"),
   fileUrl: text("fileUrl"),
+  slideImages: text("slideImages"),
   mimeType: varchar("mimeType", { length: 120 }),
   fileSize: int("fileSize"),
   color: varchar("color", { length: 24 }).notNull().default("blue"),

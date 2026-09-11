@@ -15,6 +15,13 @@
       "when": 1789128765114,
       "tag": "0001_silent_agent_brand",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1789129161340,
+      "tag": "0002_last_black_crow",
+      "breakpoints": true
     }
   ]
 }

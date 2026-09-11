@@ -6,7 +6,8 @@ import { isAdminPasswordValid } from "./admin";
 import { getSessionCookieOptions } from "./_core/cookies";
 import { systemRouter } from "./_core/systemRouter";
 import { publicProcedure, router } from "./_core/trpc";
-import { storagePut } from "./storage";
+import { storageGetSignedUrl, storagePut } from "./storage";
+import { renderSlideImages } from "./slideRenderer";
 
 const categories = ["찬송가", "CCM"] as const;
 const colors = ["rose", "sage", "amber", "blue", "violet", "teal"];
@@ -37,7 +38,16 @@ async function saveFile(file: z.infer<NonNullable<typeof fileInput>>) {
   const safeName = file.fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
   const bytes = Buffer.from(file.fileData, "base64");
   const stored = await storagePut(`praise-library/${crypto.randomUUID()}-${safeName}`, bytes, file.mimeType);
-  return { fileName: file.fileName, fileKey: stored.key, fileUrl: stored.url, mimeType: file.mimeType, fileSize: file.fileSize };
+  const slideImages = await renderSlideImages(bytes, file.fileName);
+  return {
+    fileName: file.fileName,
+    fileKey: stored.key,
+    fileUrl: stored.url,
+    slideImages: slideImages.length ? JSON.stringify(slideImages) : undefined,
+    slideCount: slideImages.length || undefined,
+    mimeType: file.mimeType,
+    fileSize: file.fileSize,
+  };
 }
 
 function assertAdminPassword(password: string) {
@@ -84,6 +94,18 @@ export const appRouter = router({
         results.push(await createSong({ title: title || `새 곡 ${index + 1}`, category: input.category, hymnNumber: input.category === "찬송가" ? inferHymnNumber(file.fileName) : null, slideCount: 1, color: colors[index % colors.length], ...stored }));
       }
       return results;
+    }),
+    prepareSlides: publicProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ input }) => {
+      const current = await getSongById(input.id);
+      if (!current) throw new TRPCError({ code: "NOT_FOUND", message: "곡을 찾을 수 없습니다." });
+      if (current.slideImages) return current;
+      if (!current.fileKey) throw new TRPCError({ code: "BAD_REQUEST", message: "원본 PPT 파일이 연결되지 않았습니다." });
+      const signedUrl = await storageGetSignedUrl(current.fileKey);
+      const response = await fetch(signedUrl);
+      if (!response.ok) throw new Error("원본 PPT를 불러오지 못했어요.");
+      const rendered = await renderSlideImages(Buffer.from(await response.arrayBuffer()), current.fileName ?? `${current.title}.pptx`);
+      if (!rendered.length) throw new Error("PPT를 슬라이드 이미지로 변환하지 못했어요.");
+      return updateSong(input.id, { slideImages: JSON.stringify(rendered), slideCount: rendered.length });
     }),
     update: publicProcedure.input(z.object({ id: z.number().int().positive(), adminPassword: z.string().min(1), data: songFields.partial(), file: fileInput })).mutation(async ({ input }) => {
       assertAdminPassword(input.adminPassword);
