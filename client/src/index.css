@@ -211,3 +211,9 @@ h1 em { color: #b28651; font-style: normal; }
 .bulk-category-label { display: grid; gap: 7px; margin-top: 16px; color: #66747e; font-size: 10px; font-weight: 700; }.bulk-category-label select { height: 38px; padding: 0 10px; color: #405367; background: #fbfaf6; border: 1px solid #e2ddd3; border-radius: 7px; outline: none; font-size: 11px; }
 .bulk-progress { margin-top: 17px; }.bulk-progress-head { display: flex; justify-content: space-between; color: #72817e; font-size: 9px; }.bulk-progress-head strong { color: #55755f; font-family: 'DM Mono', monospace; }.bulk-progress-track { height: 7px; margin-top: 7px; overflow: hidden; background: #e7ebe5; border-radius: 99px; }.bulk-progress-track span { display: block; height: 100%; background: #719b78; border-radius: inherit; transition: width .18s ease; }
 @media (max-width: 700px) { .upload-actions { gap: 5px; }.upload-button { padding: 8px 9px; font-size: 9px; }.upload-button-secondary { display: inline-flex; }.bulk-file-summary { flex-direction: column; gap: 4px; } }
+
+.hymn-number-field { display: grid; gap: 7px; color: #66747e; font-size: 10px; font-weight: 700; }
+.hymn-number-field input { height: 38px; padding: 0 10px; color: #405367; background: #fbfaf6; border: 1px solid #e2ddd3; border-radius: 7px; outline: none; font-size: 11px; }
+.hymn-number-field input:focus { border-color: #c49a4f; box-shadow: 0 0 0 3px rgba(196,154,79,.12); }
+.hymn-number-field span { color: #9a9b96; font-size: 9px; font-weight: 500; }
+.hymn-number-badge { color: #9b7440; font-family: 'DM Mono', monospace; font-size: 9px; font-weight: 700; }

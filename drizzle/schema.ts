@@ -21,6 +21,7 @@ export const songs = mysqlTable("songs", {
   id: int("id").autoincrement().primaryKey(),
   title: varchar("title", { length: 255 }).notNull(),
   category: varchar("category", { length: 32 }).notNull().default("CCM"),
+  hymnNumber: int("hymnNumber"),
   tone: varchar("tone", { length: 12 }).notNull().default("—"),
   slideCount: int("slideCount").notNull().default(1),
   fileName: varchar("fileName", { length: 255 }),

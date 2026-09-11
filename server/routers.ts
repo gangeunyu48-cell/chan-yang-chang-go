@@ -13,6 +13,7 @@ const colors = ["rose", "sage", "amber", "blue", "violet", "teal"];
 const songFields = z.object({
   title: z.string().trim().min(1).max(255),
   category: z.enum(categories),
+  hymnNumber: z.number().int().min(1).max(999).nullable().optional(),
   slideCount: z.number().int().min(1).max(999).default(1),
   color: z.string().max(24).default("blue"),
 });
@@ -45,6 +46,13 @@ function assertAdminPassword(password: string) {
   }
 }
 
+function inferHymnNumber(fileName: string): number | null {
+  const stem = fileName.replace(/\.(pptx?|pdf)$/i, "").trim();
+  const match = stem.match(/(?:^|[\s_-])(?:제\s*)?(\d{1,3})(?:\s*장)?(?:$|[\s_.-])/i) ?? stem.match(/^(?:제\s*)?(\d{1,3})/i);
+  const number = match ? Number(match[1]) : NaN;
+  return Number.isInteger(number) && number >= 1 && number <= 999 ? number : null;
+}
+
 export const appRouter = router({
   system: systemRouter,
   auth: router({
@@ -73,7 +81,7 @@ export const appRouter = router({
         const file = input.files[index];
         const stored = await saveFile(file);
         const title = file.fileName.replace(/\.(pptx?|pdf)$/i, "").replace(/[_-]+/g, " ").trim();
-        results.push(await createSong({ title: title || `새 곡 ${index + 1}`, category: input.category, slideCount: 1, color: colors[index % colors.length], ...stored }));
+        results.push(await createSong({ title: title || `새 곡 ${index + 1}`, category: input.category, hymnNumber: input.category === "찬송가" ? inferHymnNumber(file.fileName) : null, slideCount: 1, color: colors[index % colors.length], ...stored }));
       }
       return results;
     }),

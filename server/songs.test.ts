@@ -30,4 +30,15 @@ describe("songs input validation", () => {
       file: undefined,
     })).rejects.toThrow();
   });
+
+  it("rejects hymn numbers outside the hymnal range", async () => {
+    await expect(caller.songs.create({
+      title: "찬송가 테스트",
+      category: "찬송가",
+      hymnNumber: 1000,
+      slideCount: 4,
+      color: "blue",
+      file: undefined,
+    })).rejects.toThrow();
+  });
 });

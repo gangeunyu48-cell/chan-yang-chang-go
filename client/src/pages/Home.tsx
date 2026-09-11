@@ -32,7 +32,7 @@ import type { AppRouter } from "../../../server/routers";
 
 type Song = inferRouterOutputs<AppRouter>["songs"]["list"][number];
 type Category = "전체 악보" | "찬송가" | "CCM";
-type FormState = { title: string; category: "찬송가" | "CCM"; slideCount: string };
+type FormState = { title: string; category: "찬송가" | "CCM"; hymnNumber: string; slideCount: string };
 
 type FilePayload = {
   fileName: string;
@@ -48,7 +48,7 @@ const categories: { label: Category; icon: typeof LibraryBig }[] = [
 ];
 
 const colors = ["rose", "sage", "amber", "blue", "violet", "teal"];
-const emptyForm: FormState = { title: "", category: "CCM", slideCount: "1" };
+const emptyForm: FormState = { title: "", category: "CCM", hymnNumber: "", slideCount: "1" };
 
 function BrandMark() {
   return (
@@ -147,7 +147,7 @@ function PresentationMode({ song, onClose }: { song: Song; onClose: () => void }
       <div className="slideshow-stage">
         <button className="slide-nav" onClick={() => setSlide((value) => Math.max(1, value - 1))} disabled={slide === 1} aria-label="이전 슬라이드"><ArrowLeft size={22} /></button>
         <div className="presentation-slide">
-          <div className="presentation-kicker">찬양창고 · {song.category}</div>
+          <div className="presentation-kicker">찬양창고 · {song.category}{song.category === "찬송가" && song.hymnNumber ? ` · ${song.hymnNumber}장` : ""}</div>
           <h2>{currentTitle}</h2>
           <div className="presentation-line" />
           <div className="presentation-staff" aria-hidden="true">
@@ -227,7 +227,7 @@ function SongEditor({
   onSubmit: (form: FormState, file: File | null) => void;
   saving: boolean;
 }) {
-  const [form, setForm] = useState<FormState>(() => song ? { title: song.title, category: song.category === "찬송가" ? "찬송가" : "CCM", slideCount: String(song.slideCount) } : emptyForm);
+  const [form, setForm] = useState<FormState>(() => song ? { title: song.title, category: song.category === "찬송가" ? "찬송가" : "CCM", hymnNumber: song.hymnNumber ? String(song.hymnNumber) : "", slideCount: String(song.slideCount) } : emptyForm);
   const [file, setFile] = useState<File | null>(null);
 
   const chooseFile = (event: ChangeEvent<HTMLInputElement>) => {
@@ -237,7 +237,7 @@ function SongEditor({
       return;
     }
     setFile(selected);
-    if (selected && !form.title) setForm((current) => ({ ...current, title: selected.name.replace(/\.(pptx?|pdf)$/i, "").replace(/[_-]+/g, " ") }));
+    if (selected) setForm((current) => ({ ...current, title: current.title || selected.name.replace(/\.(pptx?|pdf)$/i, "").replace(/[_-]+/g, " "), hymnNumber: current.category === "찬송가" && !current.hymnNumber ? (selected.name.match(/(?:^|[\s_-])(?:제\s*)?(\d{1,3})(?:\s*장)?(?:$|[\s_.-])/i)?.[1] ?? "") : current.hymnNumber }));
   };
 
   const submit = (event: FormEvent) => {
@@ -256,6 +256,7 @@ function SongEditor({
         <div className="editor-fields">
           <label>곡 이름<input autoFocus value={form.title} onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} placeholder="예: 은혜" /></label>
           <div className="field-grid"><label>분류<select value={form.category} onChange={(event) => setForm((current) => ({ ...current, category: event.target.value as "찬송가" | "CCM" }))}><option value="CCM">CCM</option><option value="찬송가">찬송가</option></select></label><label>슬라이드 수<input type="number" min="1" max="999" value={form.slideCount} onChange={(event) => setForm((current) => ({ ...current, slideCount: event.target.value }))} /></label></div>
+          {form.category === "찬송가" && <label className="hymn-number-field">찬송가 장 번호<input type="number" min="1" max="999" value={form.hymnNumber} onChange={(event) => setForm((current) => ({ ...current, hymnNumber: event.target.value }))} placeholder="예: 310" /><span>예배 책자에 표시할 몇 장인지 입력하세요.</span></label>}
           <label className="file-picker-label">PPT 원본 파일<span className="file-picker"><FileUp size={19} /><span>{file?.name ?? song?.fileName ?? "PPT, PPTX 또는 PDF 선택"}</span><input type="file" accept=".ppt,.pptx,.pdf" onChange={chooseFile} /></span></label>
           <div className="editor-note"><Check size={15} /> 수정하면 다른 화면에도 3초 안에 자동으로 반영됩니다.</div>
         </div>
@@ -321,7 +322,8 @@ export default function Home() {
       }
       filePayload = await encodeFile(file);
     }
-    const base = { title: form.title.trim(), category: form.category, slideCount: Math.max(1, Number(form.slideCount) || 1) };
+    const parsedHymnNumber = Number(form.hymnNumber);
+    const base = { title: form.title.trim(), category: form.category, hymnNumber: form.category === "찬송가" && Number.isInteger(parsedHymnNumber) && parsedHymnNumber >= 1 ? parsedHymnNumber : null, slideCount: Math.max(1, Number(form.slideCount) || 1) };
     if (editor) {
       updateSong.mutate({ id: editor.id, adminPassword, data: base, file: filePayload });
     } else {
@@ -428,7 +430,7 @@ export default function Home() {
           <section className={`upload-card ${isDragging ? "is-dragging" : ""}`} onDragOver={(event) => { event.preventDefault(); setIsDragging(true); }} onDragLeave={() => setIsDragging(false)} onDrop={dropFile}><div className="upload-inner"><div className="upload-symbol"><UploadCloud size={25} strokeWidth={1.7} /></div><div className="upload-copy"><strong>PPT를 놓거나 새 곡을 추가하세요</strong><span>{adminPassword ? "관리자 모드에서 곡 이름·분류를 저장하고 원본 PPT를 올릴 수 있어요." : "곡을 추가하려면 관리자 모드를 먼저 시작해 주세요."}</span></div><div className="upload-actions"><button className="upload-button upload-button-secondary" onClick={(event) => { event.stopPropagation(); if (!adminPassword) { openAdminGate(); return; } setBulkOpen(true); }}><UploadCloud size={16} /> 최대 700개</button><button className="upload-button" onClick={(event) => { event.stopPropagation(); openEditor(null); }}><Plus size={17} /> 곡 추가</button></div></div></section>
 
           <section className="library-section"><div className="section-heading"><div><div className="section-kicker">YOUR SONGS</div><h2>{activeCategory}</h2><span className="result-count">{filteredSongs.length}곡</span></div><div className="view-tools"><div className="search-box"><Search size={17} /><input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="곡 이름 검색" aria-label="곡 이름 검색" /></div><button className="refresh-chip" onClick={() => songsQuery.refetch()}><span className="refresh-dot" /> 새로고침</button></div></div>
-            {songsQuery.isLoading ? <div className="loading-state"><LoaderCircle className="spin" size={25} /><span>찬양곡을 불러오는 중이에요...</span></div> : filteredSongs.length ? <div className="song-list">{filteredSongs.map((song) => <article className="song-card" key={song.id}><div className="song-preview"><MusicPaper song={song} compact /></div><div className="song-main"><div className="song-title-line"><div><h3>{song.title}</h3><div className="song-meta"><span className={`category-badge badge-${song.category === "찬송가" ? "hymn" : "ccm"}`}>{song.category}</span><span>{formatUpdated(song.updatedAt)}</span></div></div><div className="song-menu-wrap"><button className="more-button" onClick={(event) => { event.stopPropagation(); setMenuSongId(menuSongId === song.id ? null : song.id); }} aria-label={`${song.title} 메뉴`}><MoreHorizontal size={19} /></button>{menuSongId === song.id && <div className="song-menu" onClick={(event) => event.stopPropagation()}><button onClick={() => { openEditor(song); setMenuSongId(null); }}><Pencil size={14} /> 곡 정보 수정</button><button className="danger" onClick={() => { if (!adminPassword) { setMenuSongId(null); openAdminGate(); return; } if (window.confirm(`'${song.title}' 곡을 삭제할까요?`)) removeSong.mutate({ id: song.id, adminPassword }); setMenuSongId(null); }}><Trash2 size={14} /> 곡 삭제</button></div>}</div></div><div className="song-bottom"><FileTypeBadge song={song} /><span className="slide-count"><FileMusic size={13} /> {song.slideCount} slides</span><div className="song-actions"><button className="slide-action" onClick={() => setPlayingSong(song)}><Play size={14} fill="currentColor" /> 슬라이드쇼</button><button className="download-action" onClick={() => downloadSong(song)} aria-label={`${song.title} 다운로드`}><ArrowDownToLine size={17} /></button></div></div></div></article>)}</div> : <div className="empty-state"><FolderOpen size={25} /><h3>{searchQuery ? "검색 결과가 없어요" : "아직 곡이 없어요"}</h3><p>관리자 모드에서 첫 곡을 등록해 보세요.</p><button onClick={() => openEditor(null)}><Plus size={15} /> 곡 추가</button></div>}
+            {songsQuery.isLoading ? <div className="loading-state"><LoaderCircle className="spin" size={25} /><span>찬양곡을 불러오는 중이에요...</span></div> : filteredSongs.length ? <div className="song-list">{filteredSongs.map((song) => <article className="song-card" key={song.id}><div className="song-preview"><MusicPaper song={song} compact /></div><div className="song-main"><div className="song-title-line"><div><h3>{song.title}</h3><div className="song-meta"><span className={`category-badge badge-${song.category === "찬송가" ? "hymn" : "ccm"}`}>{song.category}</span>{song.category === "찬송가" && song.hymnNumber && <span className="hymn-number-badge">{song.hymnNumber}장</span>}<span>{formatUpdated(song.updatedAt)}</span></div></div><div className="song-menu-wrap"><button className="more-button" onClick={(event) => { event.stopPropagation(); setMenuSongId(menuSongId === song.id ? null : song.id); }} aria-label={`${song.title} 메뉴`}><MoreHorizontal size={19} /></button>{menuSongId === song.id && <div className="song-menu" onClick={(event) => event.stopPropagation()}><button onClick={() => { openEditor(song); setMenuSongId(null); }}><Pencil size={14} /> 곡 정보 수정</button><button className="danger" onClick={() => { if (!adminPassword) { setMenuSongId(null); openAdminGate(); return; } if (window.confirm(`'${song.title}' 곡을 삭제할까요?`)) removeSong.mutate({ id: song.id, adminPassword }); setMenuSongId(null); }}><Trash2 size={14} /> 곡 삭제</button></div>}</div></div><div className="song-bottom"><FileTypeBadge song={song} /><span className="slide-count"><FileMusic size={13} /> {song.slideCount} slides</span><div className="song-actions"><button className="slide-action" onClick={() => setPlayingSong(song)}><Play size={14} fill="currentColor" /> 슬라이드쇼</button><button className="download-action" onClick={() => downloadSong(song)} aria-label={`${song.title} 다운로드`}><ArrowDownToLine size={17} /></button></div></div></div></article>)}</div> : <div className="empty-state"><FolderOpen size={25} /><h3>{searchQuery ? "검색 결과가 없어요" : "아직 곡이 없어요"}</h3><p>관리자 모드에서 첫 곡을 등록해 보세요.</p><button onClick={() => openEditor(null)}><Plus size={15} /> 곡 추가</button></div>}
           </section>
           <footer className="page-footer"><span>찬양창고 · 함께 만드는 예배 자료실</span><span>{songsQuery.dataUpdatedAt ? `마지막 동기화 ${formatUpdated(new Date(songsQuery.dataUpdatedAt))}` : "실시간 연결 중"}</span></footer>
         </div>
