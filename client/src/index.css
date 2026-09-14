@@ -240,3 +240,43 @@ h1 em { color: #b28651; font-style: normal; }
 .slideshow-overlay:fullscreen .presentation-slide-real .real-slide-image { width: 100%; height: 100%; object-fit: contain; }
 .slideshow-overlay:fullscreen .presentation-slide-real .presentation-kicker { top: 18px; left: 24px; }
 .slideshow-overlay:fullscreen .presentation-slide-real .presentation-footer { bottom: 0; padding: 11px 24px; }
+
+/* True 16:9 PPT playback: the source slide owns the whole canvas. */
+.presentation-slide-real {
+  width: min(92vw, calc(92vh * 16 / 9));
+  height: min(92vh, calc(92vw * 9 / 16));
+  aspect-ratio: 16 / 9;
+  padding: 0;
+  background: #111820;
+}
+.presentation-slide-real .real-slide-image {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #111820;
+}
+.presentation-slide-real .presentation-kicker,
+.presentation-slide-real .presentation-footer {
+  pointer-events: none;
+}
+.presentation-slide-real .presentation-footer {
+  z-index: 2;
+}
+.slideshow-overlay:fullscreen .slideshow-stage {
+  display: grid;
+  place-items: center;
+  width: 100vw;
+  height: 100vh;
+}
+.slideshow-overlay:fullscreen .presentation-slide-real {
+  width: min(100vw, calc(100vh * 16 / 9));
+  height: min(100vh, calc(100vw * 9 / 16));
+  aspect-ratio: 16 / 9;
+}
+.slideshow-overlay:fullscreen .presentation-slide-real .real-slide-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}

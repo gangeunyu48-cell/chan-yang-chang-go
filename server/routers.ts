@@ -107,6 +107,19 @@ export const appRouter = router({
       if (!rendered.length) throw new Error("PPT를 슬라이드 이미지로 변환하지 못했어요.");
       return updateSong(input.id, { slideImages: JSON.stringify(rendered), slideCount: rendered.length });
     }),
+    prepareManySlides: publicProcedure.input(z.object({ ids: z.array(z.number().int().positive()).min(1).max(700) })).mutation(async ({ input }) => {
+      const results = [];
+      for (const id of input.ids) {
+        const current = await getSongById(id);
+        if (!current || current.slideImages || !current.fileKey) continue;
+        const signedUrl = await storageGetSignedUrl(current.fileKey);
+        const response = await fetch(signedUrl);
+        if (!response.ok) continue;
+        const rendered = await renderSlideImages(Buffer.from(await response.arrayBuffer()), current.fileName ?? `${current.title}.pptx`);
+        if (rendered.length) results.push(await updateSong(id, { slideImages: JSON.stringify(rendered), slideCount: rendered.length }));
+      }
+      return results;
+    }),
     update: publicProcedure.input(z.object({ id: z.number().int().positive(), adminPassword: z.string().min(1), data: songFields.partial(), file: fileInput })).mutation(async ({ input }) => {
       assertAdminPassword(input.adminPassword);
       const current = await getSongById(input.id);
