@@ -280,3 +280,30 @@ h1 em { color: #b28651; font-style: normal; }
   height: 100%;
   object-fit: cover;
 }
+
+/* Fill the entire slideshow viewport like the reference: no letterbox bars. */
+.slideshow-stage {
+  position: relative;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+}
+.presentation-slide-real {
+  width: 100vw;
+  height: 100%;
+  max-width: none;
+  aspect-ratio: auto;
+  border-radius: 0;
+  box-shadow: none;
+}
+.presentation-slide-real .real-slide-image {
+  object-fit: cover;
+}
+.slideshow-overlay:fullscreen .presentation-slide-real {
+  width: 100vw;
+  height: 100vh;
+  aspect-ratio: auto;
+}
+.slideshow-overlay:fullscreen .presentation-slide-real .real-slide-image {
+  object-fit: cover;
+}
