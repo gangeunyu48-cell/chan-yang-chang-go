@@ -383,3 +383,11 @@ h1 em { color: #b28651; font-style: normal; }
 
 .theme-dark { background: #111b29; color: #ecf1f4; }
 .theme-dark .main-content { background: #111b29; }
+
+/* Modal scrolling: keep the header and actions reachable on short screens. */
+.modal-backdrop { overflow-y: auto; align-items: flex-start; overscroll-behavior: contain; }
+.upload-modal { max-height: calc(100dvh - 40px); overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+@media (max-width: 640px) {
+  .modal-backdrop { padding: 12px; }
+  .upload-modal { max-height: calc(100dvh - 24px); padding: 20px; }
+}
