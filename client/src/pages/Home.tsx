@@ -126,6 +126,13 @@ function parseSlideImages(value: string | null | undefined): string[] {
   }
 }
 
+function downloadName(song: Song) {
+  const extension = song.fileName?.match(/\.[a-z0-9]+$/i)?.[0] ?? ".pptx";
+  return song.category === "찬송가" && song.hymnNumber
+    ? `찬${song.hymnNumber}장${extension}`
+    : `${song.title.replace(/[\\/:*?"<>|]/g, " ").trim() || "찬양곡"}${extension}`;
+}
+
 function PresentationMode({ song, onClose, preparing = false }: { song: Song; onClose: () => void; preparing?: boolean }) {
   const [slide, setSlide] = useState(1);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -168,7 +175,7 @@ function PresentationMode({ song, onClose, preparing = false }: { song: Song; on
       <div className="slideshow-controls">
         <div className="slide-dots">{Array.from({ length: totalSlides }).map((_, index) => <button key={index} className={`slide-dot ${slide === index + 1 ? "active" : ""}`} onClick={() => setSlide(index + 1)} aria-label={`${index + 1}번 슬라이드`} />)}</div>
         <span className="slideshow-hint">← → 또는 스페이스로 넘기기 · Esc로 나가기</span>
-        {song.fileUrl && <a className="slideshow-download" href={song.fileUrl} download={song.fileName ?? `${song.title}.pptx`}><ArrowDownToLine size={16} /> 원본 PPT</a>}
+        {song.fileUrl && <a className="slideshow-download" href={song.fileUrl} download={downloadName(song)}><ArrowDownToLine size={16} /> 원본 PPT</a>}
       </div>
     </div>
   );
@@ -439,7 +446,10 @@ export default function Home() {
     }
     const anchor = document.createElement("a");
     anchor.href = song.fileUrl;
-    anchor.download = song.fileName ?? `${song.title}.pptx`;
+    const extension = song.fileName?.match(/\.[a-z0-9]+$/i)?.[0] ?? ".pptx";
+    anchor.download = song.category === "찬송가" && song.hymnNumber
+      ? `찬${song.hymnNumber}장${extension}`
+      : `${song.title.replace(/[\\/:*?"<>|]/g, " ").trim() || "찬양곡"}${extension}`;
     anchor.click();
   };
 
