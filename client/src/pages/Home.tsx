@@ -140,6 +140,7 @@ function downloadUrl(song: Song) {
 
 function PresentationMode({ song, onClose, preparing = false }: { song: Song; onClose: () => void; preparing?: boolean }) {
   const [slide, setSlide] = useState(1);
+  const [prepareElapsed, setPrepareElapsed] = useState(0);
   const stageRef = useRef<HTMLDivElement>(null);
   const slideImages = parseSlideImages(song.slideImages);
   const totalSlides = slideImages.length || Math.max(1, song.slideCount);
@@ -157,6 +158,21 @@ function PresentationMode({ song, onClose, preparing = false }: { song: Song; on
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [onClose, totalSlides]);
 
+  useEffect(() => {
+    if (!preparing) {
+      setPrepareElapsed(0);
+      return;
+    }
+    const started = Date.now();
+    const timer = window.setInterval(() => setPrepareElapsed(Math.floor((Date.now() - started) / 1000)), 1000);
+    return () => window.clearInterval(timer);
+  }, [preparing]);
+
+  const rawProgress = Math.round(100 * (1 - Math.exp(-prepareElapsed / 12)));
+  const prepareProgress = Math.min(92, Math.max(8, rawProgress));
+  const estimatedSeconds = Math.max(0, Math.round(prepareElapsed * (100 / Math.max(prepareProgress, 1) - 1)));
+  const formatSeconds = (seconds: number) => seconds < 60 ? `${seconds}초` : `${Math.floor(seconds / 60)}분 ${seconds % 60}초`;
+
   const closePresentation = () => {
     if (document.fullscreenElement) document.exitFullscreen().catch(() => undefined);
     onClose();
@@ -172,7 +188,7 @@ function PresentationMode({ song, onClose, preparing = false }: { song: Song; on
         <button className="slide-nav" onClick={() => setSlide((value) => Math.max(1, value - 1))} disabled={slide === 1} aria-label="이전 슬라이드"><ArrowLeft size={22} /></button>
         <div className={`presentation-slide ${slideImages.length ? "presentation-slide-real" : ""}`}>
           <div className="presentation-kicker">찬양창고 · {song.category}{song.category === "찬송가" && song.hymnNumber ? ` · ${song.hymnNumber}장` : ""}</div>
-          {preparing ? <div className="presentation-preparing"><LoaderCircle size={25} className="spin" /><strong>실제 PPT 슬라이드를 준비하는 중이에요</strong><span>잠시 후 원본 악보 화면이 표시됩니다.</span></div> : slideImages.length ? <img className="real-slide-image" src={slideImages[slide - 1]} alt={`${song.title} ${slide}번 슬라이드`} /> : <><h2>{currentTitle}</h2><div className="presentation-line" /><div className="presentation-staff" aria-hidden="true">{[0, 1, 2, 3, 4].map((line) => <span key={line} style={{ top: `${25 + line * 18}px` }} />)}<b>♩</b><i>♪</i><em>♫</em><strong>♩</strong></div><div className="presentation-lyrics">주님의 은혜 안에 오늘도 노래합니다</div></>}
+          {preparing ? <div className="presentation-preparing"><LoaderCircle size={25} className="spin" /><strong>실제 PPT 슬라이드를 준비하는 중이에요</strong><div className="presentation-progress"><span style={{ width: `${prepareProgress}%` }} /></div><div className="presentation-progress-meta"><b>{prepareProgress}%</b><span>경과 {formatSeconds(prepareElapsed)}</span><span>{estimatedSeconds > 0 ? `약 ${formatSeconds(estimatedSeconds)} 남음` : "예상 시간 계산 중"}</span></div><small>원본 PPT를 예배용 슬라이드로 변환하고 있습니다.</small></div> : slideImages.length ? <img className="real-slide-image" src={slideImages[slide - 1]} alt={`${song.title} ${slide}번 슬라이드`} /> : <><h2>{currentTitle}</h2><div className="presentation-line" /><div className="presentation-staff" aria-hidden="true">{[0, 1, 2, 3, 4].map((line) => <span key={line} style={{ top: `${25 + line * 18}px` }} />)}<b>♩</b><i>♪</i><em>♫</em><strong>♩</strong></div><div className="presentation-lyrics">주님의 은혜 안에 오늘도 노래합니다</div></>}
           <div className="presentation-footer"><span>{song.category}</span><span>{String(slide).padStart(2, "0")}</span></div>
         </div>
         <button className="slide-nav" onClick={() => setSlide((value) => Math.min(totalSlides, value + 1))} disabled={slide === totalSlides} aria-label="다음 슬라이드"><ArrowRight size={22} /></button>

@@ -391,3 +391,9 @@ h1 em { color: #b28651; font-style: normal; }
   .modal-backdrop { padding: 12px; }
   .upload-modal { max-height: calc(100dvh - 24px); padding: 20px; }
 }
+
+.presentation-progress { width: min(360px, 72vw); height: 8px; margin-top: 18px; overflow: hidden; background: rgba(255,255,255,.18); border: 1px solid rgba(255,255,255,.25); border-radius: 999px; }
+.presentation-progress span { display: block; height: 100%; background: linear-gradient(90deg, #d9a44f, #f2d58d); border-radius: inherit; transition: width .7s ease-out; }
+.presentation-progress-meta { display: flex; justify-content: space-between; width: min(360px, 72vw); margin-top: 8px; color: rgba(255,255,255,.68); font-family: 'DM Mono', monospace; font-size: 10px; }
+.presentation-progress-meta b { color: #f2d58d; }
+.presentation-preparing small { margin-top: 18px; color: rgba(255,255,255,.5); font-size: 10px; }
