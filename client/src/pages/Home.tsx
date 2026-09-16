@@ -21,6 +21,7 @@ import {
   Play,
   Plus,
   Search,
+  Settings,
   ShieldCheck,
   Trash2,
   UploadCloud,
@@ -197,6 +198,17 @@ function AdminGate({ onClose, onUnlock }: { onClose: () => void; onUnlock: (pass
   );
 }
 
+function SettingsPanel({ theme, onThemeChange, uiScale, onUiScaleChange, fontScale, onFontScaleChange, onClose }: { theme: "light" | "dark"; onThemeChange: (theme: "light" | "dark") => void; uiScale: number; onUiScaleChange: (value: number) => void; fontScale: number; onFontScaleChange: (value: number) => void; onClose: () => void }) {
+  const adjust = (current: number, setter: (value: number) => void, delta: number) => setter(Math.min(115, Math.max(85, current + delta)));
+  return <div className="settings-popover" role="dialog" aria-label="설정" onClick={(event) => event.stopPropagation()}>
+    <div className="settings-heading"><div><span className="section-kicker">PREFERENCES</span><h3>설정</h3></div><button className="icon-button" onClick={onClose} aria-label="설정 닫기"><X size={16} /></button></div>
+    <div className="settings-row"><span>화면 모드</span><div className="theme-switch"><button className={theme === "light" ? "selected" : ""} onClick={() => onThemeChange("light")}>화이트</button><button className={theme === "dark" ? "selected" : ""} onClick={() => onThemeChange("dark")}>다크</button></div></div>
+    <div className="settings-row settings-slider-row"><div><span>화면 크기</span><small>{uiScale}%</small></div><div className="stepper"><button onClick={() => adjust(uiScale, onUiScaleChange, -5)}>−</button><input type="range" min="85" max="115" step="5" value={uiScale} onChange={(event) => onUiScaleChange(Number(event.target.value))} /><button onClick={() => adjust(uiScale, onUiScaleChange, 5)}>+</button></div></div>
+    <div className="settings-row settings-slider-row"><div><span>글씨 크기</span><small>{fontScale}%</small></div><div className="stepper"><button onClick={() => adjust(fontScale, onFontScaleChange, -5)}>−</button><input type="range" min="85" max="115" step="5" value={fontScale} onChange={(event) => onFontScaleChange(Number(event.target.value))} /><button onClick={() => adjust(fontScale, onFontScaleChange, 5)}>+</button></div></div>
+    <button className="settings-reset" onClick={() => { onThemeChange("light"); onUiScaleChange(100); onFontScaleChange(100); }}>기본값</button>
+  </div>;
+}
+
 function BulkUploadModal({ onClose, onSubmit, saving, progress }: { onClose: () => void; onSubmit: (files: File[], category: "찬송가" | "CCM") => void; saving: boolean; progress: { done: number; total: number } }) {
   const [files, setFiles] = useState<File[]>([]);
   const [category, setCategory] = useState<"찬송가" | "CCM">("CCM");
@@ -295,6 +307,10 @@ export default function Home() {
   const [bulkSaving, setBulkSaving] = useState(false);
   const [preparingSongId, setPreparingSongId] = useState<number | null>(null);
   const [prepareAllProgress, setPrepareAllProgress] = useState({ done: 0, total: 0 });
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [uiScale, setUiScale] = useState(100);
+  const [fontScale, setFontScale] = useState(100);
 
   const filteredSongs = useMemo(() => songs.filter((song) => {
     const categoryMatch = activeCategory === "전체 악보" || song.category === activeCategory;
@@ -451,7 +467,7 @@ export default function Home() {
   };
 
   return (
-    <div className="archive-shell" onClick={() => setMenuSongId(null)}>
+    <div className={`archive-shell ${theme === "dark" ? "theme-dark" : ""}`} style={{ "--ui-scale": `${uiScale / 100}`, "--font-scale": `${fontScale / 100}` } as React.CSSProperties} onClick={() => { setMenuSongId(null); setSettingsOpen(false); }}>
       <aside className="sidebar">
         <div className="sidebar-top"><AppLogo /><button className="mobile-menu" aria-label="메뉴"><Menu size={19} /></button></div>
         <div className="sidebar-section-label">LIBRARY</div>
@@ -464,7 +480,7 @@ export default function Home() {
       </aside>
 
       <main className="main-content">
-        <header className="topbar"><div className="breadcrumb"><span className="breadcrumb-muted">Library</span><ChevronRight size={14} /><span>{activeCategory}</span></div><div className="topbar-actions"><span className={`live-status ${songsQuery.isFetching ? "syncing" : ""}`}><span /> {songsQuery.isFetching ? "동기화 중" : "실시간 동기화"}</span><button className={`admin-mode-button ${adminPassword ? "active" : ""}`} onClick={() => adminPassword ? setAdminPassword("") : openAdminGate()}><span className="admin-mode-icon">{adminPassword ? <ShieldCheck size={14} /> : <LockKeyhole size={14} />}</span>{adminPassword ? "관리자 모드 ON" : "관리자 모드"}</button><button className="top-icon-button" aria-label="도움말"><CircleHelp size={18} /></button><div className="avatar">윤</div></div></header>
+        <header className="topbar"><div className="breadcrumb"><span className="breadcrumb-muted">Library</span><ChevronRight size={14} /><span>{activeCategory}</span></div><div className="topbar-actions"><span className={`live-status ${songsQuery.isFetching ? "syncing" : ""}`}><span /> {songsQuery.isFetching ? "동기화 중" : "실시간 동기화"}</span><button className={`admin-mode-button ${adminPassword ? "active" : ""}`} onClick={() => adminPassword ? setAdminPassword("") : openAdminGate()}><span className="admin-mode-icon">{adminPassword ? <ShieldCheck size={14} /> : <LockKeyhole size={14} />}</span>{adminPassword ? "관리자 모드 ON" : "관리자 모드"}</button><button className="top-icon-button" aria-label="도움말"><CircleHelp size={18} /></button><button className="settings-trigger" onClick={(event) => { event.stopPropagation(); setSettingsOpen((value) => !value); }} aria-label="설정"><Settings size={18} /></button>{settingsOpen && <SettingsPanel theme={theme} onThemeChange={setTheme} uiScale={uiScale} onUiScaleChange={setUiScale} fontScale={fontScale} onFontScaleChange={setFontScale} onClose={() => setSettingsOpen(false)} />}</div></header>
         <div className="page-wrap">
           <section className="hero-row compact-hero"><div><div className="eyebrow"><span className="eyebrow-dot" /> LIVE PRAISE LIBRARY</div><h1>필요한 곡을 꺼내<br /><em>바로 시작해요.</em></h1><p className="hero-copy">곡을 추가하고 수정하면 이곳에 바로 업데이트됩니다.<br />예배에 필요한 악보를 한 곳에서 관리해 보세요.</p></div><div className="hero-note-art" aria-hidden="true"><span className="floating-note note-one">♪</span><span className="floating-note note-two">♫</span><span className="floating-note note-three">♩</span><div className="hero-staff-lines">{[0, 1, 2, 3, 4].map((line) => <span key={line} />)}</div><div className="hero-staff-notes">♩　♪　♫</div></div></section>
 
