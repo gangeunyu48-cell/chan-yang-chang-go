@@ -14,11 +14,13 @@ import {
   LibraryBig,
   LoaderCircle,
   Menu,
+  MonitorPlay,
   MoreHorizontal,
   Music2,
   Pencil,
   Play,
   Plus,
+  Radio,
   RefreshCw,
   Search,
   Settings,
@@ -138,68 +140,59 @@ function downloadUrl(song: Song) {
   return `/api/download?key=${encodeURIComponent(song.fileKey)}&filename=${encodeURIComponent(downloadName(song))}`;
 }
 
-function PresentationMode({ song, onClose, preparing = false }: { song: Song; onClose: () => void; preparing?: boolean }) {
+function BroadcastWindow({ song, image }: { song: Song; image: string }) {
+  const popupRef = useRef<Window | null>(null);
+  useEffect(() => {
+    if (popupRef.current && !popupRef.current.closed && image) {
+      const target = popupRef.current.document.querySelector("img");
+      if (target) target.src = image;
+    }
+  }, [image]);
+  const open = () => {
+    const popup = popupRef.current && !popupRef.current.closed ? popupRef.current : window.open("", "praise-output", "popup,width=1280,height=720");
+    if (!popup) { toast.error("송출 화면을 열 수 없어요. 브라우저의 팝업 차단을 확인해 주세요."); return; }
+    popupRef.current = popup;
+    popup.document.title = "찬양창고 송출 화면";
+    popup.document.body.innerHTML = `<img src="${image}" alt="" style="position:fixed;inset:0;width:100vw;height:100vh;object-fit:cover;background:#000" />`;
+    popup.document.body.style.margin = "0";
+    popup.document.body.style.background = "#000";
+    popup.focus();
+  };
+  return <button className="presenter-output-button" onClick={open} title="메뉴 없는 송출 화면 열기"><Radio size={15} /> 송출 화면</button>;
+}
+
+function PresentationMode({ songs, initialIndex = 0, onClose }: { songs: Song[]; initialIndex?: number; onClose: () => void }) {
+  const [songIndex, setSongIndex] = useState(initialIndex);
   const [slide, setSlide] = useState(1);
   const [prepareElapsed, setPrepareElapsed] = useState(0);
   const stageRef = useRef<HTMLDivElement>(null);
-  const slideImages = parseSlideImages(song.slideImages);
-  const totalSlides = slideImages.length || Math.max(1, song.slideCount);
-  const titles = [song.title, "Verse 01", "Chorus", "Bridge", "Ending"];
-  const currentTitle = titles[slide - 1] ?? `${song.title} · ${slide}`;
+  const song = songs[songIndex];
+  const slideImages = parseSlideImages(song?.slideImages);
+  const totalSlides = slideImages.length || Math.max(1, song?.slideCount ?? 1);
+  const nextSong = songs[songIndex + 1];
 
   useEffect(() => {
     stageRef.current?.requestFullscreen?.().catch(() => undefined);
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
-      if (event.key === "ArrowRight" || event.key === " ") setSlide((value) => Math.min(totalSlides, value + 1));
-      if (event.key === "ArrowLeft") setSlide((value) => Math.max(1, value - 1));
+      if (event.key === "ArrowLeft") { event.preventDefault(); if (slide > 1) setSlide((value) => value - 1); else if (songIndex > 0) { setSongIndex((value) => value - 1); setSlide(1); } }
+      if (event.key === "ArrowRight" || event.key === " ") { event.preventDefault(); if (slide < totalSlides) setSlide((value) => value + 1); else if (songIndex < songs.length - 1) { setSongIndex((value) => value + 1); setSlide(1); } }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [onClose, totalSlides]);
+  }, [onClose, slide, songIndex, songs.length, totalSlides]);
+  useEffect(() => { setSlide(1); }, [songIndex]);
+  useEffect(() => { setPrepareElapsed(0); if (!song?.slideImages && song?.fileKey) { const timer = window.setInterval(() => setPrepareElapsed((value) => value + 1), 1000); return () => window.clearInterval(timer); } }, [song]);
 
-  useEffect(() => {
-    if (!preparing) {
-      setPrepareElapsed(0);
-      return;
-    }
-    const started = Date.now();
-    const timer = window.setInterval(() => setPrepareElapsed(Math.floor((Date.now() - started) / 1000)), 1000);
-    return () => window.clearInterval(timer);
-  }, [preparing]);
-
-  const rawProgress = Math.round(100 * (1 - Math.exp(-prepareElapsed / 12)));
-  const prepareProgress = Math.min(92, Math.max(8, rawProgress));
-  const estimatedSeconds = Math.max(0, Math.round(prepareElapsed * (100 / Math.max(prepareProgress, 1) - 1)));
-  const formatSeconds = (seconds: number) => seconds < 60 ? `${seconds}초` : `${Math.floor(seconds / 60)}분 ${seconds % 60}초`;
-
-  const closePresentation = () => {
-    if (document.fullscreenElement) document.exitFullscreen().catch(() => undefined);
-    onClose();
-  };
-
-  return (
-    <div ref={stageRef} className="slideshow-overlay" role="dialog" aria-modal="true" aria-label={`${song.title} 슬라이드쇼`}>
-      <div className="slideshow-topbar">
-        <div className="slideshow-brand"><BrandMark /><span>{song.title}</span><span className="slideshow-divider">/</span><span className="slideshow-muted">{slide} / {totalSlides}</span></div>
-        <button className="icon-button icon-button-dark" onClick={closePresentation} aria-label="슬라이드쇼 닫기"><X size={20} /></button>
-      </div>
-      <div className="slideshow-stage">
-        <button className="slide-nav" onClick={() => setSlide((value) => Math.max(1, value - 1))} disabled={slide === 1} aria-label="이전 슬라이드"><ArrowLeft size={22} /></button>
-        <div className={`presentation-slide ${slideImages.length ? "presentation-slide-real" : ""}`}>
-          <div className="presentation-kicker">찬양창고 · {song.category}{song.category === "찬송가" && song.hymnNumber ? ` · ${song.hymnNumber}장` : ""}</div>
-          {preparing ? <div className="presentation-preparing"><LoaderCircle size={25} className="spin" /><strong>실제 PPT 슬라이드를 준비하는 중이에요</strong><div className="presentation-progress"><span style={{ width: `${prepareProgress}%` }} /></div><div className="presentation-progress-meta"><b>{prepareProgress}%</b><span>경과 {formatSeconds(prepareElapsed)}</span><span>{estimatedSeconds > 0 ? `약 ${formatSeconds(estimatedSeconds)} 남음` : "예상 시간 계산 중"}</span></div><small>원본 PPT를 예배용 슬라이드로 변환하고 있습니다.</small></div> : slideImages.length ? <img className="real-slide-image" src={slideImages[slide - 1]} alt={`${song.title} ${slide}번 슬라이드`} /> : <><h2>{currentTitle}</h2><div className="presentation-line" /><div className="presentation-staff" aria-hidden="true">{[0, 1, 2, 3, 4].map((line) => <span key={line} style={{ top: `${25 + line * 18}px` }} />)}<b>♩</b><i>♪</i><em>♫</em><strong>♩</strong></div><div className="presentation-lyrics">주님의 은혜 안에 오늘도 노래합니다</div></>}
-          <div className="presentation-footer"><span>{song.category}</span><span>{String(slide).padStart(2, "0")}</span></div>
-        </div>
-        <button className="slide-nav" onClick={() => setSlide((value) => Math.min(totalSlides, value + 1))} disabled={slide === totalSlides} aria-label="다음 슬라이드"><ArrowRight size={22} /></button>
-      </div>
-      <div className="slideshow-controls">
-        <div className="slide-dots">{Array.from({ length: totalSlides }).map((_, index) => <button key={index} className={`slide-dot ${slide === index + 1 ? "active" : ""}`} onClick={() => setSlide(index + 1)} aria-label={`${index + 1}번 슬라이드`} />)}</div>
-        <span className="slideshow-hint">← → 또는 스페이스로 넘기기 · Esc로 나가기</span>
-        {song.fileUrl && <a className="slideshow-download" href={downloadUrl(song)}><ArrowDownToLine size={16} /> 원본 PPT</a>}
-      </div>
-    </div>
-  );
+  if (!song) return null;
+  const image = slideImages[slide - 1];
+  const goNextSong = () => { if (nextSong) { setSongIndex((value) => value + 1); setSlide(1); } };
+  const goPrevSong = () => { if (songIndex > 0) { setSongIndex((value) => value - 1); setSlide(1); } };
+  return <div ref={stageRef} className="slideshow-overlay presenter-mode" role="dialog" aria-modal="true" aria-label="예배 발표자 모드">
+    <div className="presenter-topbar"><div className="slideshow-brand"><BrandMark /><span>예배 모드 · {song.title}</span><span className="slideshow-muted">{songIndex + 1} / {songs.length}</span></div><div className="presenter-top-actions"><BroadcastWindow song={song} image={image ?? ""} /><button className="icon-button icon-button-dark" onClick={onClose} aria-label="예배 모드 닫기"><X size={20} /></button></div></div>
+    <div className="presenter-layout"><section className="presenter-live"><div className="presenter-label"><span>LIVE · 송출 화면</span><span>{slide} / {totalSlides}</span></div><div className="slideshow-stage presenter-stage"><button className="slide-nav" onClick={() => slide > 1 ? setSlide((value) => value - 1) : goPrevSong()} aria-label="이전"><ArrowLeft size={22} /></button><div className={`presentation-slide ${image ? "presentation-slide-real" : ""}`}>{image ? <img className="real-slide-image" src={image} alt={`${song.title} ${slide}번 슬라이드`} /> : <div className="presentation-preparing"><LoaderCircle size={25} className="spin" /><strong>슬라이드를 준비하는 중이에요</strong><small>{prepareElapsed}초 경과</small></div>}</div><button className="slide-nav" onClick={() => slide < totalSlides ? setSlide((value) => value + 1) : goNextSong()} aria-label="다음"><ArrowRight size={22} /></button></div></section><aside className="presenter-queue"><div className="presenter-queue-heading"><div><span className="section-kicker">WORSHIP PLAYLIST</span><h2>다음 순서</h2></div><span>{songIndex + 1} / {songs.length}</span></div><div className="presenter-current"><span>현재 곡</span><strong>{song.title}</strong><small>{song.category}{song.hymnNumber ? ` · ${song.hymnNumber}장` : ""}</small></div><div className="presenter-next-label">다음 곡</div>{nextSong ? <button className="presenter-next-card" onClick={goNextSong}><span>{nextSong.title}</span><small>{nextSong.category}{nextSong.hymnNumber ? ` · ${nextSong.hymnNumber}장` : ""}</small><ChevronRight size={16} /></button> : <div className="presenter-end">재생목록의 마지막 곡입니다.</div>}<div className="presenter-actions"><button onClick={goPrevSong} disabled={songIndex === 0}><ArrowLeft size={15} /> 이전 곡</button><button onClick={goNextSong} disabled={!nextSong}>다음 곡 <ArrowRight size={15} /></button></div></aside></div>
+    <div className="presenter-footer"><span>← → 슬라이드 이동 · 스페이스 다음 · Esc 종료</span><span>방송실에는 왼쪽 LIVE 화면만 송출하세요.</span></div>
+  </div>;
 }
 
 function AdminGate({ onClose, onUnlock }: { onClose: () => void; onUnlock: (password: string) => void }) {
@@ -325,7 +318,8 @@ export default function Home() {
   const [activeCategory, setActiveCategory] = useState<Category>("전체 악보");
   const [searchQuery, setSearchQuery] = useState("");
   const [editor, setEditor] = useState<Song | null | undefined>(undefined);
-  const [playingSong, setPlayingSong] = useState<Song | null>(null);
+  const [playingSongs, setPlayingSongs] = useState<Song[] | null>(null);
+  const [worshipQueueIds, setWorshipQueueIds] = useState<number[]>([]);
   const [menuSongId, setMenuSongId] = useState<number | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [adminPassword, setAdminPassword] = useState("");
@@ -384,14 +378,21 @@ export default function Home() {
   };
 
   const openPresentation = (song: Song) => {
-    setPlayingSong(song);
+    setPlayingSongs([song]);
     if (!song.slideImages && song.fileKey) {
       setPreparingSongId(song.id);
       prepareSlides.mutate({ id: song.id }, {
-        onSuccess: (updated) => { setPlayingSong(updated); setPreparingSongId(null); },
+        onSuccess: (updated) => { setPlayingSongs([updated]); setPreparingSongId(null); },
         onError: (error) => { setPreparingSongId(null); toast.error(error.message || "PPT 슬라이드를 준비하지 못했어요."); },
       });
     }
+  };
+
+  const toggleWorshipSong = (song: Song) => setWorshipQueueIds((current) => current.includes(song.id) ? current.filter((id) => id !== song.id) : [...current, song.id]);
+  const startWorshipMode = () => {
+    const queue = worshipQueueIds.length ? worshipQueueIds.map((id) => songs.find((song) => song.id === id)).filter((song): song is Song => Boolean(song)) : filteredSongs;
+    if (!queue.length) { toast.info("예배 모드로 재생할 PPT를 먼저 선택해 주세요."); return; }
+    setPlayingSongs(queue);
   };
 
   const saveSong = async (form: FormState, file: File | null) => {
@@ -511,10 +512,10 @@ export default function Home() {
         <div className="page-wrap">
           <section className="hero-row compact-hero"><div><div className="eyebrow"><span className="eyebrow-dot" /> LIVE PRAISE LIBRARY</div><h1>필요한 곡을 꺼내<br /><em>바로 시작해요.</em></h1><p className="hero-copy">곡을 추가하고 수정하면 이곳에 바로 업데이트됩니다.<br />예배에 필요한 악보를 한 곳에서 관리해 보세요.</p></div><div className="hero-note-art" aria-hidden="true"><span className="floating-note note-one">♪</span><span className="floating-note note-two">♫</span><span className="floating-note note-three">♩</span><div className="hero-staff-lines">{[0, 1, 2, 3, 4].map((line) => <span key={line} />)}</div><div className="hero-staff-notes">♩　♪　♫</div></div></section>
 
-          <section className={`upload-card ${isDragging ? "is-dragging" : ""}`} onDragOver={(event) => { event.preventDefault(); setIsDragging(true); }} onDragLeave={() => setIsDragging(false)} onDrop={dropFile}><div className="upload-inner"><div className="upload-symbol"><UploadCloud size={25} strokeWidth={1.7} /></div><div className="upload-copy"><strong>PPT를 놓거나 새 곡을 추가하세요</strong><span>{adminPassword ? "관리자 모드에서 곡 이름·분류를 저장하고 원본 PPT를 올릴 수 있어요." : "곡을 추가하려면 관리자 모드를 먼저 시작해 주세요."}</span></div><div className="upload-actions">{adminPassword && <button className="upload-button upload-button-secondary" onClick={(event) => { event.stopPropagation(); void prepareAllStoredSlides(); }} disabled={prepareManySlides.isPending || prepareAllProgress.done > 0 && prepareAllProgress.done < prepareAllProgress.total}>{prepareManySlides.isPending || (prepareAllProgress.done > 0 && prepareAllProgress.done < prepareAllProgress.total) ? `PPT 준비 ${prepareAllProgress.done}/${prepareAllProgress.total}` : "전체 PPT 준비"}</button>}<button className="upload-button upload-button-secondary" onClick={(event) => { event.stopPropagation(); if (!adminPassword) { openAdminGate(); return; } setBulkOpen(true); }}><UploadCloud size={16} /> 최대 700개</button><button className="upload-button" onClick={(event) => { event.stopPropagation(); openEditor(null); }}><Plus size={17} /> 곡 추가</button></div></div></section>
+          <section className={`upload-card ${isDragging ? "is-dragging" : ""}`} onDragOver={(event) => { event.preventDefault(); setIsDragging(true); }} onDragLeave={() => setIsDragging(false)} onDrop={dropFile}><div className="upload-inner"><div className="upload-symbol"><UploadCloud size={25} strokeWidth={1.7} /></div><div className="upload-copy"><strong>PPT를 놓거나 새 곡을 추가하세요</strong><span>{adminPassword ? "관리자 모드에서 곡 이름·분류를 저장하고 원본 PPT를 올릴 수 있어요." : "곡을 추가하려면 관리자 모드를 먼저 시작해 주세요."}</span></div><div className="upload-actions"><button className="upload-button upload-button-secondary" onClick={(event) => { event.stopPropagation(); startWorshipMode(); }}><MonitorPlay size={16} /> 예배 모드{worshipQueueIds.length ? ` (${worshipQueueIds.length})` : ""}</button>{adminPassword && <button className="upload-button upload-button-secondary" onClick={(event) => { event.stopPropagation(); void prepareAllStoredSlides(); }} disabled={prepareManySlides.isPending || prepareAllProgress.done > 0 && prepareAllProgress.done < prepareAllProgress.total}>{prepareManySlides.isPending || (prepareAllProgress.done > 0 && prepareAllProgress.done < prepareAllProgress.total) ? `PPT 준비 ${prepareAllProgress.done}/${prepareAllProgress.total}` : "전체 PPT 준비"}</button>}<button className="upload-button upload-button-secondary" onClick={(event) => { event.stopPropagation(); if (!adminPassword) { openAdminGate(); return; } setBulkOpen(true); }}><UploadCloud size={16} /> 최대 700개</button><button className="upload-button" onClick={(event) => { event.stopPropagation(); openEditor(null); }}><Plus size={17} /> 곡 추가</button></div></div></section>
 
           <section className="library-section"><div className="section-heading"><div><div className="section-kicker">YOUR SONGS</div><h2>{activeCategory}</h2><span className="result-count">{filteredSongs.length}곡</span></div><div className="view-tools"><div className="search-box"><Search size={17} /><input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="곡 이름 검색" aria-label="곡 이름 검색" /></div></div></div>
-            {songsQuery.isLoading ? <div className="loading-state"><LoaderCircle className="spin" size={25} /><span>찬양곡을 불러오는 중이에요...</span></div> : filteredSongs.length ? <div className="song-list">{filteredSongs.map((song) => <article className="song-card" key={song.id}><div className="song-preview"><MusicPaper song={song} compact /></div><div className="song-main"><div className="song-title-line"><div><h3>{song.title}</h3><div className="song-meta"><span className={`category-badge badge-${song.category === "찬송가" ? "hymn" : "ccm"}`}>{song.category}</span>{song.category === "찬송가" && song.hymnNumber && <span className="hymn-number-badge">{song.hymnNumber}장</span>}<span>{formatUpdated(song.updatedAt)}</span></div></div><div className="song-menu-wrap"><button className="more-button" onClick={(event) => { event.stopPropagation(); setMenuSongId(menuSongId === song.id ? null : song.id); }} aria-label={`${song.title} 메뉴`}><MoreHorizontal size={19} /></button>{menuSongId === song.id && <div className="song-menu" onClick={(event) => event.stopPropagation()}><button onClick={() => { openEditor(song); setMenuSongId(null); }}><Pencil size={14} /> 곡 정보 수정</button><button className="danger" onClick={() => { if (!adminPassword) { setMenuSongId(null); openAdminGate(); return; } if (window.confirm(`'${song.title}' 곡을 삭제할까요?`)) removeSong.mutate({ id: song.id, adminPassword }); setMenuSongId(null); }}><Trash2 size={14} /> 곡 삭제</button></div>}</div></div><div className="song-bottom"><FileTypeBadge song={song} /><span className="slide-count"><FileMusic size={13} /> {song.slideCount} slides</span><div className="song-actions"><button className="slide-action" onClick={() => openPresentation(song)}><Play size={14} fill="currentColor" /> 슬라이드쇼</button><button className="download-action" onClick={() => downloadSong(song)} aria-label={`${song.title} 다운로드`}><ArrowDownToLine size={17} /></button></div></div></div></article>)}</div> : <div className="empty-state"><FolderOpen size={25} /><h3>{searchQuery ? "검색 결과가 없어요" : "아직 곡이 없어요"}</h3><p>관리자 모드에서 첫 곡을 등록해 보세요.</p><button onClick={() => openEditor(null)}><Plus size={15} /> 곡 추가</button></div>}
+            {songsQuery.isLoading ? <div className="loading-state"><LoaderCircle className="spin" size={25} /><span>찬양곡을 불러오는 중이에요...</span></div> : filteredSongs.length ? <div className="song-list">{filteredSongs.map((song) => <article className="song-card" key={song.id}><div className="song-preview"><MusicPaper song={song} compact /></div><div className="song-main"><div className="song-title-line"><div><h3>{song.title}</h3><div className="song-meta"><span className={`category-badge badge-${song.category === "찬송가" ? "hymn" : "ccm"}`}>{song.category}</span>{song.category === "찬송가" && song.hymnNumber && <span className="hymn-number-badge">{song.hymnNumber}장</span>}<span>{formatUpdated(song.updatedAt)}</span></div></div><div className="song-menu-wrap"><button className="more-button" onClick={(event) => { event.stopPropagation(); setMenuSongId(menuSongId === song.id ? null : song.id); }} aria-label={`${song.title} 메뉴`}><MoreHorizontal size={19} /></button>{menuSongId === song.id && <div className="song-menu" onClick={(event) => event.stopPropagation()}><button onClick={() => { openEditor(song); setMenuSongId(null); }}><Pencil size={14} /> 곡 정보 수정</button><button className="danger" onClick={() => { if (!adminPassword) { setMenuSongId(null); openAdminGate(); return; } if (window.confirm(`'${song.title}' 곡을 삭제할까요?`)) removeSong.mutate({ id: song.id, adminPassword }); setMenuSongId(null); }}><Trash2 size={14} /> 곡 삭제</button></div>}</div></div><div className="song-bottom"><FileTypeBadge song={song} /><span className="slide-count"><FileMusic size={13} /> {song.slideCount} slides</span><div className="song-actions"><button className="slide-action" onClick={() => openPresentation(song)}><Play size={14} fill="currentColor" /> 슬라이드쇼</button><button className={`slide-action ${worshipQueueIds.includes(song.id) ? "selected" : ""}`} onClick={() => toggleWorshipSong(song)}><MonitorPlay size={14} /> {worshipQueueIds.includes(song.id) ? "예배 선택됨" : "예배 추가"}</button><button className="download-action" onClick={() => downloadSong(song)} aria-label={`${song.title} 다운로드`}><ArrowDownToLine size={17} /></button></div></div></div></article>)}</div> : <div className="empty-state"><FolderOpen size={25} /><h3>{searchQuery ? "검색 결과가 없어요" : "아직 곡이 없어요"}</h3><p>관리자 모드에서 첫 곡을 등록해 보세요.</p><button onClick={() => openEditor(null)}><Plus size={15} /> 곡 추가</button></div>}
           </section>
           <footer className="page-footer"><span>찬양창고 · 함께 만드는 예배 자료실</span><span>{songsQuery.dataUpdatedAt ? `마지막 동기화 ${formatUpdated(new Date(songsQuery.dataUpdatedAt))}` : "실시간 연결 중"}</span></footer>
         </div>
@@ -522,7 +523,7 @@ export default function Home() {
       {adminGateOpen && <AdminGate onClose={() => setAdminGateOpen(false)} onUnlock={unlockAdmin} />}
       {bulkOpen && <BulkUploadModal onClose={() => setBulkOpen(false)} onSubmit={bulkUpload} saving={bulkSaving} progress={bulkProgress} />}
       {editor !== undefined && <SongEditor song={editor} onClose={() => setEditor(undefined)} onSubmit={saveSong} saving={createSong.isPending || updateSong.isPending} />}
-      {playingSong && <PresentationMode song={playingSong} preparing={preparingSongId === playingSong.id} onClose={() => { setPlayingSong(null); setPreparingSongId(null); }} />}
+      {playingSongs && <PresentationMode songs={playingSongs} onClose={() => { setPlayingSongs(null); setPreparingSongId(null); }} />}
     </div>
   );
 }

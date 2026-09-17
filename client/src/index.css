@@ -397,3 +397,38 @@ h1 em { color: #b28651; font-style: normal; }
 .presentation-progress-meta { display: flex; justify-content: space-between; width: min(360px, 72vw); margin-top: 8px; color: rgba(255,255,255,.68); font-family: 'DM Mono', monospace; font-size: 10px; }
 .presentation-progress-meta b { color: #f2d58d; }
 .presentation-preparing small { margin-top: 18px; color: rgba(255,255,255,.5); font-size: 10px; }
+
+/* Worship presenter mode: the left live preview is the only surface intended for church output. */
+.presenter-mode { background: #101722; color: #f7f2e9; }
+.presenter-topbar { display: flex; align-items: center; justify-content: space-between; min-height: 64px; padding: 0 24px; border-bottom: 1px solid rgba(255,255,255,.12); }
+.presenter-top-actions { display: flex; align-items: center; gap: 10px; }
+.presenter-output-button { display: inline-flex; align-items: center; gap: 7px; padding: 9px 13px; color: #fffaf2; background: #b7833d; border-radius: 8px; font-size: 11px; font-weight: 800; }
+.presenter-output-button:hover { background: #d09b51; }
+.presenter-layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 18px; height: calc(100vh - 112px); padding: 18px; }
+.presenter-live { min-width: 0; display: flex; flex-direction: column; }
+.presenter-label, .presenter-queue-heading { display: flex; align-items: center; justify-content: space-between; color: #b9c4cf; font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: .08em; }
+.presenter-stage { flex: 1; min-height: 0; margin-top: 10px; }
+.presenter-stage .presentation-slide { width: min(100%, 960px); height: 100%; max-width: none; aspect-ratio: 16 / 9; }
+.presenter-queue { padding: 20px; overflow-y: auto; background: #182331; border: 1px solid #2d3a49; border-radius: 14px; }
+.presenter-queue-heading { align-items: flex-end; padding-bottom: 16px; border-bottom: 1px solid #2d3a49; }
+.presenter-queue-heading h2 { margin: 5px 0 0; color: #fffaf2; font-family: 'Gowun Batang', serif; font-size: 23px; }
+.presenter-current { display: grid; gap: 7px; margin: 18px 0 26px; padding: 16px; background: #243448; border-left: 3px solid #d0a152; border-radius: 9px; }
+.presenter-current span, .presenter-next-label { color: #c9a866; font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: .08em; }
+.presenter-current strong { color: #fff; font-size: 16px; }
+.presenter-current small, .presenter-next-card small { color: #aab8c6; font-size: 10px; }
+.presenter-next-label { margin-bottom: 8px; }
+.presenter-next-card { position: relative; display: grid; gap: 6px; width: 100%; padding: 14px; color: #f3f6f8; background: #202e3e; border: 1px solid #344657; border-radius: 9px; text-align: left; }
+.presenter-next-card:hover { border-color: #c89b55; background: #27394d; }
+.presenter-next-card svg { position: absolute; top: 22px; right: 13px; color: #d0a152; }
+.presenter-end { padding: 14px; color: #8798a9; background: #202e3e; border-radius: 9px; font-size: 11px; }
+.presenter-actions { display: flex; gap: 8px; margin-top: 18px; }
+.presenter-actions button { display: inline-flex; align-items: center; justify-content: center; gap: 5px; flex: 1; padding: 9px 6px; color: #dbe5ed; background: #2a3b4e; border-radius: 7px; font-size: 10px; }
+.presenter-actions button:disabled { opacity: .4; cursor: not-allowed; }
+.presenter-footer { display: flex; justify-content: space-between; padding: 0 24px 15px; color: #8695a4; font-size: 10px; }
+.slide-action.selected { color: #a9792f; background: #f5ecd9; }
+@media (max-width: 800px) { .presenter-layout { grid-template-columns: 1fr; height: auto; overflow-y: auto; } .presenter-stage { min-height: 46vh; } .presenter-queue { min-height: 220px; } .presenter-footer { display: none; } }
+
+.presenter-mode .presentation-slide-real,
+.presenter-mode:fullscreen .presentation-slide-real { width: min(100%, 960px); height: 100%; max-width: none; aspect-ratio: 16 / 9; border-radius: 10px; }
+.presenter-mode .presentation-slide-real .real-slide-image,
+.presenter-mode:fullscreen .presentation-slide-real .real-slide-image { width: 100%; height: 100%; object-fit: cover; }
