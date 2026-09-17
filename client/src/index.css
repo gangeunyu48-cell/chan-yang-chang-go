@@ -432,3 +432,15 @@ h1 em { color: #b28651; font-style: normal; }
 .presenter-mode:fullscreen .presentation-slide-real { width: min(100%, 960px); height: 100%; max-width: none; aspect-ratio: 16 / 9; border-radius: 10px; }
 .presenter-mode .presentation-slide-real .real-slide-image,
 .presenter-mode:fullscreen .presentation-slide-real .real-slide-image { width: 100%; height: 100%; object-fit: cover; }
+
+/* Presenter mode must keep its preview inside the left pane; clean output rules apply only to the output view. */
+.presenter-mode .presenter-topbar { display: flex !important; }
+.presenter-mode .slideshow-stage,
+.presenter-mode:fullscreen .slideshow-stage { position: relative !important; inset: auto !important; display: grid !important; place-items: center; width: 100% !important; height: auto !important; min-height: 0; flex: 1; padding: 0 !important; overflow: hidden; }
+.presenter-mode .presentation-slide-real,
+.presenter-mode:fullscreen .presentation-slide-real { width: 100% !important; height: 100% !important; max-width: 960px !important; aspect-ratio: 16 / 9 !important; border-radius: 10px !important; box-shadow: none; }
+.presenter-mode .presentation-slide-real .real-slide-image,
+.presenter-mode:fullscreen .presentation-slide-real .real-slide-image { width: 100% !important; height: 100% !important; object-fit: cover !important; }
+.presenter-mode .slide-nav,
+.presenter-mode:fullscreen .slide-nav { display: grid !important; position: absolute; z-index: 3; }
+.presenter-mode .slideshow-controls { display: none !important; }
