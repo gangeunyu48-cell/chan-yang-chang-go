@@ -140,7 +140,13 @@ function downloadUrl(song: Song) {
   return `/api/download?key=${encodeURIComponent(song.fileKey)}&filename=${encodeURIComponent(downloadName(song))}`;
 }
 
-function BroadcastWindow({ song, image }: { song: Song; image: string }) {
+type OutputMode = "duplicate" | "extend";
+
+type OutputWindow = Window & {
+  getScreenDetails?: () => Promise<{ screens: Array<{ left: number; top: number; width: number; height: number; isPrimary?: boolean }> }>;
+};
+
+function PresentationOutput({ image, mode }: { image: string; mode: OutputMode }) {
   const popupRef = useRef<Window | null>(null);
   useEffect(() => {
     if (popupRef.current && !popupRef.current.closed && image) {
@@ -148,17 +154,27 @@ function BroadcastWindow({ song, image }: { song: Song; image: string }) {
       if (target) target.src = image;
     }
   }, [image]);
-  const open = () => {
-    const popup = popupRef.current && !popupRef.current.closed ? popupRef.current : window.open("", "praise-output", "popup,width=1280,height=720");
+  const open = async () => {
+    const name = mode === "extend" ? "praise-extended-output" : "praise-duplicate-output";
+    const popup = popupRef.current && !popupRef.current.closed ? popupRef.current : window.open("", name, "popup,width=1280,height=720");
     if (!popup) { toast.error("송출 화면을 열 수 없어요. 브라우저의 팝업 차단을 확인해 주세요."); return; }
     popupRef.current = popup;
-    popup.document.title = "찬양창고 송출 화면";
+    popup.document.title = mode === "extend" ? "찬양창고 확장 송출" : "찬양창고 복제 송출";
     popup.document.body.innerHTML = `<img src="${image}" alt="" style="position:fixed;inset:0;width:100vw;height:100vh;object-fit:cover;background:#000" />`;
-    popup.document.body.style.margin = "0";
-    popup.document.body.style.background = "#000";
+    popup.document.body.style.cssText = "margin:0;background:#000;overflow:hidden";
+    if (mode === "extend") {
+      // Call fullscreen while the click activation is still valid.
+      void popup.document.documentElement.requestFullscreen?.().catch(() => undefined);
+      const parent = window as OutputWindow;
+      try {
+        const details = parent.getScreenDetails ? await parent.getScreenDetails() : null;
+        const secondary = details?.screens.find((screen) => !screen.isPrimary);
+        if (secondary) { popup.moveTo(secondary.left, secondary.top); popup.resizeTo(secondary.width, secondary.height); }
+      } catch { /* Window Management permission is optional; fullscreen still works. */ }
+    }
     popup.focus();
   };
-  return <button className="presenter-output-button" onClick={open} title="메뉴 없는 송출 화면 열기"><Radio size={15} /> 송출 화면</button>;
+  return <button className={`presenter-output-button ${mode === "extend" ? "presenter-output-extend" : ""}`} onClick={() => void open()} title={mode === "extend" ? "보조 모니터에 PPT만 전체 화면으로 표시" : "현재 PPT를 별도 화면에 복제"}>{mode === "extend" ? <MonitorPlay size={15} /> : <Radio size={15} />} {mode === "extend" ? "확장 화면" : "복제 화면"}</button>;
 }
 
 function PresentationMode({ songs, initialIndex = 0, onClose }: { songs: Song[]; initialIndex?: number; onClose: () => void }) {
@@ -186,11 +202,12 @@ function PresentationMode({ songs, initialIndex = 0, onClose }: { songs: Song[];
 
   if (!song) return null;
   const image = slideImages[slide - 1];
+  const nextImage = parseSlideImages(nextSong?.slideImages)[0];
   const goNextSong = () => { if (nextSong) { setSongIndex((value) => value + 1); setSlide(1); } };
   const goPrevSong = () => { if (songIndex > 0) { setSongIndex((value) => value - 1); setSlide(1); } };
   return <div ref={stageRef} className="slideshow-overlay presenter-mode" role="dialog" aria-modal="true" aria-label="예배 발표자 모드">
-    <div className="presenter-topbar"><div className="slideshow-brand"><BrandMark /><span>예배 모드 · {song.title}</span><span className="slideshow-muted">{songIndex + 1} / {songs.length}</span></div><div className="presenter-top-actions"><BroadcastWindow song={song} image={image ?? ""} /><button className="icon-button icon-button-dark" onClick={onClose} aria-label="예배 모드 닫기"><X size={20} /></button></div></div>
-    <div className="presenter-layout"><section className="presenter-live"><div className="presenter-label"><span>LIVE · 송출 화면</span><span>{slide} / {totalSlides}</span></div><div className="slideshow-stage presenter-stage"><button className="slide-nav" onClick={() => slide > 1 ? setSlide((value) => value - 1) : goPrevSong()} aria-label="이전"><ArrowLeft size={22} /></button><div className={`presentation-slide ${image ? "presentation-slide-real" : ""}`}>{image ? <img className="real-slide-image" src={image} alt={`${song.title} ${slide}번 슬라이드`} /> : <div className="presentation-preparing"><LoaderCircle size={25} className="spin" /><strong>슬라이드를 준비하는 중이에요</strong><small>{prepareElapsed}초 경과</small></div>}</div><button className="slide-nav" onClick={() => slide < totalSlides ? setSlide((value) => value + 1) : goNextSong()} aria-label="다음"><ArrowRight size={22} /></button></div></section><aside className="presenter-queue"><div className="presenter-queue-heading"><div><span className="section-kicker">WORSHIP PLAYLIST</span><h2>다음 순서</h2></div><span>{songIndex + 1} / {songs.length}</span></div><div className="presenter-current"><span>현재 곡</span><strong>{song.title}</strong><small>{song.category}{song.hymnNumber ? ` · ${song.hymnNumber}장` : ""}</small></div><div className="presenter-next-label">다음 곡</div>{nextSong ? <button className="presenter-next-card" onClick={goNextSong}><span>{nextSong.title}</span><small>{nextSong.category}{nextSong.hymnNumber ? ` · ${nextSong.hymnNumber}장` : ""}</small><ChevronRight size={16} /></button> : <div className="presenter-end">재생목록의 마지막 곡입니다.</div>}<div className="presenter-actions"><button onClick={goPrevSong} disabled={songIndex === 0}><ArrowLeft size={15} /> 이전 곡</button><button onClick={goNextSong} disabled={!nextSong}>다음 곡 <ArrowRight size={15} /></button></div></aside></div>
+    <div className="presenter-topbar"><div className="slideshow-brand"><BrandMark /><span>예배 모드 · {song.title}</span><span className="slideshow-muted">{songIndex + 1} / {songs.length}</span></div><div className="presenter-top-actions"><PresentationOutput image={image ?? ""} mode="duplicate" /><PresentationOutput image={image ?? ""} mode="extend" /><button className="icon-button icon-button-dark" onClick={onClose} aria-label="예배 모드 닫기"><X size={20} /></button></div></div>
+    <div className="presenter-layout"><section className="presenter-live"><div className="presenter-label"><span>LIVE · 송출 화면</span><span>{slide} / {totalSlides}</span></div><div className="slideshow-stage presenter-stage"><button className="slide-nav" onClick={() => slide > 1 ? setSlide((value) => value - 1) : goPrevSong()} aria-label="이전"><ArrowLeft size={22} /></button><div className={`presentation-slide ${image ? "presentation-slide-real" : ""}`}>{image ? <img className="real-slide-image" src={image} alt={`${song.title} ${slide}번 슬라이드`} /> : <div className="presentation-preparing"><LoaderCircle size={25} className="spin" /><strong>슬라이드를 준비하는 중이에요</strong><small>{prepareElapsed}초 경과</small></div>}</div><button className="slide-nav" onClick={() => slide < totalSlides ? setSlide((value) => value + 1) : goNextSong()} aria-label="다음"><ArrowRight size={22} /></button></div></section><aside className="presenter-queue"><div className="presenter-queue-heading"><div><span className="section-kicker">WORSHIP PLAYLIST</span><h2>다음 순서</h2></div><span>{songIndex + 1} / {songs.length}</span></div><div className="presenter-current"><span>현재 곡</span><strong>{song.title}</strong><small>{song.category}{song.hymnNumber ? ` · ${song.hymnNumber}장` : ""}</small></div><div className="presenter-next-label">다음 곡</div>{nextSong ? <button className="presenter-next-card" onClick={goNextSong}>{nextImage ? <img className="presenter-next-preview" src={nextImage} alt="다음 PPT 미리보기" /> : <span className="presenter-next-placeholder">PPT</span>}<span>{nextSong.title}</span><small>{nextSong.category}{nextSong.hymnNumber ? ` · ${nextSong.hymnNumber}장` : ""}</small><ChevronRight size={16} /></button> : <div className="presenter-end">재생목록의 마지막 곡입니다.</div>}<div className="presenter-actions"><button onClick={goPrevSong} disabled={songIndex === 0}><ArrowLeft size={15} /> 이전 곡</button><button onClick={goNextSong} disabled={!nextSong}>다음 곡 <ArrowRight size={15} /></button></div></aside></div>
     <div className="presenter-footer"><span>← → 슬라이드 이동 · 스페이스 다음 · Esc 종료</span><span>방송실에는 왼쪽 LIVE 화면만 송출하세요.</span></div>
   </div>;
 }

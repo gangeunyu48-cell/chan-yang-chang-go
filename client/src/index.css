@@ -444,3 +444,11 @@ h1 em { color: #b28651; font-style: normal; }
 .presenter-mode .slide-nav,
 .presenter-mode:fullscreen .slide-nav { display: grid !important; position: absolute; z-index: 3; }
 .presenter-mode .slideshow-controls { display: none !important; }
+
+.presenter-output-extend { background: #2e6b9d; }
+.presenter-output-extend:hover { background: #3b83ba; }
+.presenter-next-card { grid-template-columns: 64px minmax(0, 1fr) 18px; align-items: center; column-gap: 10px; }
+.presenter-next-preview, .presenter-next-placeholder { display: block; grid-row: span 2; width: 64px; height: 40px; object-fit: cover; color: #d0a152; background: #101722; border: 1px solid #46586a; border-radius: 5px; font-family: 'DM Mono', monospace; font-size: 9px; text-align: center; line-height: 40px; }
+.presenter-next-card > span:not(.presenter-next-placeholder), .presenter-next-card > small { grid-column: 2; }
+.presenter-next-card > svg { grid-column: 3; grid-row: 1 / span 2; position: static; }
+@media (max-width: 800px) { .presenter-top-actions { gap: 5px; } .presenter-output-button { padding: 8px 9px; font-size: 10px; } }
