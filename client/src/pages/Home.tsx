@@ -243,7 +243,7 @@ function PresentationMode({ songs, initialIndex = 0, outputMode = "duplicate", o
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [onClose, slide, songIndex, songs.length, totalSlides]);
   useEffect(() => { setSlide(1); }, [songIndex]);
-  useEffect(() => { setPrepareElapsed(0); if (!song?.slideImages && song?.fileKey) { const timer = window.setInterval(() => setPrepareElapsed((value) => value + 1), 1000); return () => window.clearInterval(timer); } }, [song]);
+  useEffect(() => { setPrepareElapsed(0); if (parseSlideImages(song?.slideImages).length === 0 && song?.fileKey) { const timer = window.setInterval(() => setPrepareElapsed((value) => value + 1), 1000); return () => window.clearInterval(timer); } }, [song]);
   useEffect(() => { if (outputMode === "duplicate") updateDuplicateOutput(parseSlideImages(song?.slideImages)[slide - 1] ?? ""); }, [outputMode, slide, song]);
 
   if (!song) return null;
@@ -417,7 +417,7 @@ export default function Home() {
   };
 
   const prepareAllStoredSlides = async () => {
-    const missing = songs.filter((song) => !song.slideImages && song.fileKey);
+    const missing = songs.filter((song) => parseSlideImages(song.slideImages).length === 0 && song.fileKey);
     if (!missing.length) {
       toast.success("모든 저장된 곡의 슬라이드가 이미 준비되어 있어요.");
       return;
@@ -445,7 +445,7 @@ export default function Home() {
 
   const openPresentation = (song: Song) => {
     setPlayingSongs([song]);
-    if (!song.slideImages && song.fileKey) {
+    if (parseSlideImages(song.slideImages).length === 0 && song.fileKey) {
       setPreparingSongId(song.id);
       prepareSlides.mutate({ id: song.id }, {
         onSuccess: (updated) => { setPlayingSongs([updated]); setPreparingSongId(null); },
@@ -465,7 +465,8 @@ export default function Home() {
     setPreferredOutputMode(mode);
     setPlayingSongs([song]);
     setOutputPickerSong(null);
-    if (!song.slideImages && song.fileKey) {
+    // An empty JSON array (`[]`) is also an unprepared PPT and must be rendered.
+    if (parseSlideImages(song.slideImages).length === 0 && song.fileKey) {
       setPreparingSongId(song.id);
       prepareSlides.mutate({ id: song.id }, {
         onSuccess: (updated) => { setPlayingSongs([updated]); setPreparingSongId(null); },
