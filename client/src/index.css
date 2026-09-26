@@ -487,3 +487,17 @@ h1 em { color: #b28651; font-style: normal; }
 
 .worship-start-button { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; color: #fffaf2; background: #294b78; border-radius: 8px; font-size: 10px; font-weight: 800; }
 .worship-start-button:hover { background: #1e3b63; }
+
+/* Output semantics: duplicate = clean PPT on both displays; extend = presenter controls on the computer. */
+.duplicate-mode .presenter-topbar,
+.duplicate-mode .presenter-queue,
+.duplicate-mode .presenter-footer { display: none !important; }
+.duplicate-mode .presenter-layout { display: block; width: 100%; height: 100vh; padding: 0; }
+.duplicate-mode .presenter-live { width: 100%; height: 100%; }
+.duplicate-mode .presenter-label { display: none; }
+.duplicate-mode .presenter-stage,
+.duplicate-mode:fullscreen .presenter-stage { position: absolute !important; inset: 0 !important; display: grid !important; width: 100% !important; height: 100% !important; margin: 0; padding: 0 !important; }
+.duplicate-mode .presenter-stage .presentation-slide-real,
+.duplicate-mode:fullscreen .presenter-stage .presentation-slide-real { width: 100% !important; height: 100% !important; max-width: none !important; aspect-ratio: auto !important; border-radius: 0 !important; }
+.duplicate-mode .presenter-stage .slide-nav { display: none !important; }
+.extend-mode .presenter-output-button:first-child { box-shadow: 0 0 0 2px rgba(208,161,82,.45); }
