@@ -452,3 +452,38 @@ h1 em { color: #b28651; font-style: normal; }
 .presenter-next-card > span:not(.presenter-next-placeholder), .presenter-next-card > small { grid-column: 2; }
 .presenter-next-card > svg { grid-column: 3; grid-row: 1 / span 2; position: static; }
 @media (max-width: 800px) { .presenter-top-actions { gap: 5px; } .presenter-output-button { padding: 8px 9px; font-size: 10px; } }
+
+/* Clean card-first library and in-card detail actions. */
+.song-card-clean { cursor: pointer; transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease; }
+.song-card-clean:hover, .song-card-clean:focus-visible { border-color: #cfb276; box-shadow: 0 14px 30px rgba(48, 55, 63, .10); transform: translateY(-2px); outline: none; }
+.song-card-clean .song-card-arrow { flex: 0 0 auto; color: #b3a58d; transition: transform .18s ease, color .18s ease; }
+.song-card-clean:hover .song-card-arrow { color: #294b78; transform: translateX(3px); }
+.song-open-hint { margin-left: auto; color: #b0aaa0; font-size: 9px; }
+.song-card-clean .song-bottom { padding-top: 13px; border-top: 1px solid #eeeae2; }
+.output-picker-modal, .song-detail-modal { width: min(560px, 100%); padding: 28px; background: #fffdf9; border: 1px solid rgba(255,255,255,.62); border-radius: 18px; box-shadow: 0 22px 70px rgba(17, 29, 44, .24); animation: modal-in .26s cubic-bezier(.23,1,.32,1) both; }
+.output-picker-modal h2, .song-detail-modal h2 { margin: 0; color: #294362; font-family: 'Gowun Batang', serif; font-size: 25px; letter-spacing: -.08em; }
+.output-picker-modal p, .song-detail-modal .modal-header p { margin: 7px 0 0; color: #9a9d9c; font-size: 11px; }
+.output-choice-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 25px; }
+.output-choice-grid button { display: grid; justify-items: start; gap: 8px; min-height: 154px; padding: 20px; color: #294b78; background: #f5f2eb; border: 1px solid #e4ded1; border-radius: 13px; text-align: left; transition: background .18s ease, border .18s ease, transform .18s ease; }
+.output-choice-grid button:hover { background: #eee8da; border-color: #cba966; transform: translateY(-2px); }
+.output-choice-grid strong { color: #294362; font-size: 15px; }
+.output-choice-grid span { color: #8b9294; font-size: 10px; line-height: 1.7; }
+.output-picker-note { margin-top: 17px !important; padding-top: 14px; border-top: 1px solid #eee9df; line-height: 1.6; }
+.song-detail-preview { margin-top: 21px; padding: 14px; background: #f2eee5; border-radius: 12px; }
+.song-detail-preview .music-paper { height: 190px; }
+.song-detail-meta { display: flex; align-items: center; gap: 14px; margin-top: 14px; color: #979c9d; font-family: 'DM Mono', monospace; font-size: 9px; }
+.song-detail-actions { display: grid; grid-template-columns: 1.2fr 1fr 1fr; gap: 8px; margin-top: 20px; }
+.song-detail-actions button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 42px; padding: 8px 9px; color: #5f6d78; background: #f1eee8; border-radius: 8px; font-size: 10px; font-weight: 700; }
+.song-detail-actions button:hover { color: #294b78; background: #e7e6e0; }
+.song-detail-actions .detail-primary { color: #fffaf2; background: #294b78; }
+.song-detail-actions .detail-primary:hover { color: #fffaf2; background: #1e3b63; }
+.song-detail-actions .detail-selected { color: #996b24; background: #f5ecd9; }
+.song-detail-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 17px; padding-top: 14px; color: #a3a5a1; border-top: 1px solid #eee9df; font-size: 9px; }
+.song-detail-footer button { display: inline-flex; align-items: center; gap: 5px; color: #7f8990; background: transparent; font-size: 10px; }
+@media (max-width: 560px) { .output-choice-grid, .song-detail-actions { grid-template-columns: 1fr; } .output-picker-modal, .song-detail-modal { padding: 21px; } .song-detail-preview .music-paper { height: 150px; } }
+.theme-dark .output-picker-modal, .theme-dark .song-detail-modal { color: #ecf1f4; background: #192638; border-color: #34485e; }
+.theme-dark .output-picker-modal h2, .theme-dark .song-detail-modal h2, .theme-dark .output-choice-grid strong { color: #edf2f5; }
+.theme-dark .output-choice-grid button, .theme-dark .song-detail-actions button { color: #dbe5ed; background: #24364a; border-color: #34485e; }
+
+.worship-start-button { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; color: #fffaf2; background: #294b78; border-radius: 8px; font-size: 10px; font-weight: 800; }
+.worship-start-button:hover { background: #1e3b63; }
