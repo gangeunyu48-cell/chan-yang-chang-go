@@ -475,16 +475,19 @@ export default function Home() {
 
   const startSelectedPresentation = (song: Song, mode: OutputMode) => {
     setPreferredOutputMode(mode);
-    setPlayingSongs([song]);
     setOutputPickerSong(null);
     // An empty JSON array (`[]`) is also an unprepared PPT and must be rendered.
     if (parseSlideImages(song.slideImages).length === 0 && song.fileKey) {
       setPreparingSongId(song.id);
+      toast.info("PPT 화면을 준비하고 있어요. 잠시만 기다려 주세요.");
       prepareSlides.mutate({ id: song.id }, {
         onSuccess: (updated) => { setPlayingSongs([updated]); setPreparingSongId(null); },
         onError: (error) => { setPreparingSongId(null); toast.error(error.message || "PPT 슬라이드를 준비하지 못했어요."); },
       });
+      return;
     }
+    // Already-rendered PPTs open immediately with the real first slide.
+    setPlayingSongs([song]);
   };
 
   const saveSong = async (form: FormState, file: File | null) => {
