@@ -150,9 +150,11 @@ function openDuplicateOutput(image: string) {
     return;
   }
   duplicateOutputWindow = popup;
-  popup.document.title = "찬양창고 복제 송출";
-  popup.document.body.innerHTML = `<img src="${image}" alt="" style="position:fixed;inset:0;width:100vw;height:100vh;object-fit:cover;background:#000" />`;
-  popup.document.body.style.cssText = "margin:0;background:#000;overflow:hidden";
+  popup.document.title = "";
+  popup.document.documentElement.style.cssText = "margin:0;width:100%;height:100%;background:#000;overflow:hidden";
+  popup.document.body.innerHTML = `<img src="${image}" alt="" style="position:fixed;inset:0;width:100vw;height:100vh;object-fit:cover;background:#000;display:block" />`;
+  popup.document.body.style.cssText = "margin:0;width:100%;height:100%;background:#000;overflow:hidden;cursor:none";
+  void popup.document.documentElement.requestFullscreen?.().catch(() => undefined);
   popup.focus();
 }
 
