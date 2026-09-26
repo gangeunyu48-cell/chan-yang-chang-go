@@ -141,6 +141,26 @@ function downloadUrl(song: Song) {
 }
 
 type OutputMode = "duplicate" | "extend";
+let duplicateOutputWindow: Window | null = null;
+
+function openDuplicateOutput(image: string) {
+  const popup = duplicateOutputWindow && !duplicateOutputWindow.closed ? duplicateOutputWindow : window.open("", "praise-duplicate-output", "popup,width=1280,height=720");
+  if (!popup) {
+    toast.error("복제 화면을 열 수 없어요. 브라우저의 팝업 차단을 해제해 주세요.");
+    return;
+  }
+  duplicateOutputWindow = popup;
+  popup.document.title = "찬양창고 복제 송출";
+  popup.document.body.innerHTML = `<img src="${image}" alt="" style="position:fixed;inset:0;width:100vw;height:100vh;object-fit:cover;background:#000" />`;
+  popup.document.body.style.cssText = "margin:0;background:#000;overflow:hidden";
+  popup.focus();
+}
+
+function updateDuplicateOutput(image: string) {
+  if (!duplicateOutputWindow || duplicateOutputWindow.closed || !image) return;
+  const target = duplicateOutputWindow.document.querySelector("img");
+  if (target) target.src = image;
+}
 
 type OutputWindow = Window & {
   getScreenDetails?: () => Promise<{ screens: Array<{ left: number; top: number; width: number; height: number; isPrimary?: boolean }> }>;
@@ -222,6 +242,7 @@ function PresentationMode({ songs, initialIndex = 0, outputMode = "duplicate", o
   }, [onClose, slide, songIndex, songs.length, totalSlides]);
   useEffect(() => { setSlide(1); }, [songIndex]);
   useEffect(() => { setPrepareElapsed(0); if (!song?.slideImages && song?.fileKey) { const timer = window.setInterval(() => setPrepareElapsed((value) => value + 1), 1000); return () => window.clearInterval(timer); } }, [song]);
+  useEffect(() => { if (outputMode === "duplicate") updateDuplicateOutput(parseSlideImages(song?.slideImages)[slide - 1] ?? ""); }, [outputMode, slide, song]);
 
   if (!song) return null;
   const image = slideImages[slide - 1];
@@ -442,10 +463,14 @@ export default function Home() {
     setPreferredOutputMode(mode);
     setPlayingSongs([song]);
     setOutputPickerSong(null);
+    if (mode === "duplicate") {
+      openDuplicateOutput(parseSlideImages(song.slideImages)[0] ?? "");
+      updateDuplicateOutput(parseSlideImages(song.slideImages)[0] ?? "");
+    }
     if (!song.slideImages && song.fileKey) {
       setPreparingSongId(song.id);
       prepareSlides.mutate({ id: song.id }, {
-        onSuccess: (updated) => { setPlayingSongs([updated]); setPreparingSongId(null); },
+        onSuccess: (updated) => { setPlayingSongs([updated]); setPreparingSongId(null); updateDuplicateOutput(parseSlideImages(updated.slideImages)[0] ?? ""); },
         onError: (error) => { setPreparingSongId(null); toast.error(error.message || "PPT 슬라이드를 준비하지 못했어요."); },
       });
     }
