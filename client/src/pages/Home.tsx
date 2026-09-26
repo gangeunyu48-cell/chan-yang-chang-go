@@ -438,6 +438,19 @@ export default function Home() {
     setPlayingSongs(queue);
   };
 
+  const startSelectedPresentation = (song: Song, mode: OutputMode) => {
+    setPreferredOutputMode(mode);
+    setPlayingSongs([song]);
+    setOutputPickerSong(null);
+    if (!song.slideImages && song.fileKey) {
+      setPreparingSongId(song.id);
+      prepareSlides.mutate({ id: song.id }, {
+        onSuccess: (updated) => { setPlayingSongs([updated]); setPreparingSongId(null); },
+        onError: (error) => { setPreparingSongId(null); toast.error(error.message || "PPT 슬라이드를 준비하지 못했어요."); },
+      });
+    }
+  };
+
   const saveSong = async (form: FormState, file: File | null) => {
     if (!adminPassword) {
       openAdminGate();
@@ -567,7 +580,7 @@ export default function Home() {
       {bulkOpen && <BulkUploadModal onClose={() => setBulkOpen(false)} onSubmit={bulkUpload} saving={bulkSaving} progress={bulkProgress} />}
       {editor !== undefined && <SongEditor song={editor} onClose={() => setEditor(undefined)} onSubmit={saveSong} saving={createSong.isPending || updateSong.isPending} />}
       {selectedSong && <SongDetailPanel song={selectedSong} onClose={() => setSelectedSong(null)} onSlideshow={() => { setSelectedSong(null); setOutputPickerSong(selectedSong); }} onWorship={() => { toggleWorshipSong(selectedSong); }} selected={worshipQueueIds.includes(selectedSong.id)} onDownload={() => downloadSong(selectedSong)} onEdit={() => { setSelectedSong(null); openEditor(selectedSong); }} />}
-      {outputPickerSong && <OutputModePicker song={outputPickerSong} onClose={() => setOutputPickerSong(null)} onChoose={(mode) => { setPreferredOutputMode(mode); setPlayingSongs([outputPickerSong]); setOutputPickerSong(null); }} />}
+      {outputPickerSong && <OutputModePicker song={outputPickerSong} onClose={() => setOutputPickerSong(null)} onChoose={(mode) => startSelectedPresentation(outputPickerSong, mode)} />}
       {playingSongs && <PresentationMode songs={playingSongs} outputMode={preferredOutputMode} onClose={() => { setPlayingSongs(null); setPreparingSongId(null); }} />}
     </div>
   );
