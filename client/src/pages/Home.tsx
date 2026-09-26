@@ -204,8 +204,8 @@ function OutputModePicker({ song, onClose, onChoose }: { song: Song; onClose: ()
   return <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
     <div className="output-picker-modal" role="dialog" aria-modal="true" aria-label="PPT 송출 방식 선택">
       <div className="modal-header"><div><div className="section-kicker">SLIDESHOW OUTPUT</div><h2>어떤 화면으로 띄울까요?</h2><p>{song.title}</p></div><button className="icon-button" onClick={onClose} aria-label="닫기"><X size={19} /></button></div>
-      <div className="output-choice-grid"><button onClick={() => onChoose("duplicate")}><Radio size={25} /><strong>복제 화면</strong><span>컴퓨터와 송출 화면에<br />같은 PPT만 보여요.</span></button><button onClick={() => onChoose("extend")}><MonitorPlay size={25} /><strong>확장 화면</strong><span>컴퓨터에는 현재·다음 화면,<br />송출에는 현재 PPT만 보여요.</span></button></div>
-      <p className="output-picker-note">방송실에서 발표자 화면을 사용하려면 확장 화면을 선택하세요.</p>
+      <div className="output-choice-grid"><button onClick={() => onChoose("duplicate")}><Radio size={25} /><strong>복제 PPT</strong><span>컴퓨터에 PPT만 전체 화면으로<br />표시하고 송출 화면과 똑같이 보여요.</span></button><button onClick={() => onChoose("extend")}><MonitorPlay size={25} /><strong>확장 PPT</strong><span>컴퓨터에는 현재·다음 화면,<br />송출에는 현재 PPT만 보여요.</span></button></div>
+      <p className="output-picker-note">복제 PPT는 컴퓨터와 송출 장치를 운영체제에서 ‘화면 복제’로 설정해 사용하세요.</p>
     </div>
   </div>;
 }
@@ -465,14 +465,10 @@ export default function Home() {
     setPreferredOutputMode(mode);
     setPlayingSongs([song]);
     setOutputPickerSong(null);
-    if (mode === "duplicate") {
-      openDuplicateOutput(parseSlideImages(song.slideImages)[0] ?? "");
-      updateDuplicateOutput(parseSlideImages(song.slideImages)[0] ?? "");
-    }
     if (!song.slideImages && song.fileKey) {
       setPreparingSongId(song.id);
       prepareSlides.mutate({ id: song.id }, {
-        onSuccess: (updated) => { setPlayingSongs([updated]); setPreparingSongId(null); updateDuplicateOutput(parseSlideImages(updated.slideImages)[0] ?? ""); },
+        onSuccess: (updated) => { setPlayingSongs([updated]); setPreparingSongId(null); },
         onError: (error) => { setPreparingSongId(null); toast.error(error.message || "PPT 슬라이드를 준비하지 못했어요."); },
       });
     }
