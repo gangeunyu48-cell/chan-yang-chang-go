@@ -63,16 +63,6 @@ function inferHymnNumber(fileName: string): number | null {
   return Number.isInteger(number) && number >= 1 && number <= 999 ? number : null;
 }
 
-function hasSlideImages(value: string | null | undefined) {
-  if (!value) return false;
-  try {
-    const parsed = JSON.parse(value);
-    return Array.isArray(parsed) && parsed.length > 0;
-  } catch {
-    return false;
-  }
-}
-
 async function renderWithRetry(bytes: Buffer, fileName: string, attempts = 3) {
   for (let attempt = 1; attempt <= attempts; attempt += 1) {
     const rendered = await renderSlideImages(bytes, fileName);
@@ -117,7 +107,7 @@ export const appRouter = router({
     prepareSlides: publicProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ input }) => {
       const current = await getSongById(input.id);
       if (!current) throw new TRPCError({ code: "NOT_FOUND", message: "곡을 찾을 수 없습니다." });
-      if (hasSlideImages(current.slideImages)) return current;
+      if (current.slideImages) return current;
       if (!current.fileKey) throw new TRPCError({ code: "BAD_REQUEST", message: "원본 PPT 파일이 연결되지 않았습니다." });
       const signedUrl = await storageGetSignedUrl(current.fileKey);
       const response = await fetch(signedUrl);
@@ -130,7 +120,7 @@ export const appRouter = router({
       const results = [];
       for (const id of input.ids) {
         const current = await getSongById(id);
-        if (!current || hasSlideImages(current.slideImages) || !current.fileKey) continue;
+        if (!current || current.slideImages || !current.fileKey) continue;
         const signedUrl = await storageGetSignedUrl(current.fileKey);
         const response = await fetch(signedUrl);
         if (!response.ok) continue;

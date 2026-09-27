@@ -243,7 +243,7 @@ function PresentationMode({ songs, initialIndex = 0, outputMode = "duplicate", o
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [onClose, slide, songIndex, songs.length, totalSlides]);
   useEffect(() => { setSlide(1); }, [songIndex]);
-  useEffect(() => { setPrepareElapsed(0); if (parseSlideImages(song?.slideImages).length === 0 && song?.fileKey) { const timer = window.setInterval(() => setPrepareElapsed((value) => value + 1), 1000); return () => window.clearInterval(timer); } }, [song]);
+  useEffect(() => { setPrepareElapsed(0); if (!song?.slideImages && song?.fileKey) { const timer = window.setInterval(() => setPrepareElapsed((value) => value + 1), 1000); return () => window.clearInterval(timer); } }, [song]);
   useEffect(() => { if (outputMode === "duplicate") updateDuplicateOutput(parseSlideImages(song?.slideImages)[slide - 1] ?? ""); }, [outputMode, slide, song]);
 
   if (!song) return null;
@@ -417,7 +417,7 @@ export default function Home() {
   };
 
   const prepareAllStoredSlides = async () => {
-    const missing = songs.filter((song) => parseSlideImages(song.slideImages).length === 0 && song.fileKey);
+    const missing = songs.filter((song) => !song.slideImages && song.fileKey);
     if (!missing.length) {
       toast.success("모든 저장된 곡의 슬라이드가 이미 준비되어 있어요.");
       return;
@@ -445,23 +445,11 @@ export default function Home() {
 
   const openPresentation = (song: Song) => {
     setPlayingSongs([song]);
-    if (parseSlideImages(song.slideImages).length === 0 && song.fileKey) {
+    if (!song.slideImages && song.fileKey) {
       setPreparingSongId(song.id);
       prepareSlides.mutate({ id: song.id }, {
         onSuccess: (updated) => { setPlayingSongs([updated]); setPreparingSongId(null); },
         onError: (error) => { setPreparingSongId(null); toast.error(error.message || "PPT 슬라이드를 준비하지 못했어요."); },
-      });
-    }
-  };
-
-  const openSongDetails = (song: Song) => {
-    setSelectedSong(song);
-    // Start rendering as soon as the card opens, so output is ready sooner.
-    if (parseSlideImages(song.slideImages).length === 0 && song.fileKey && preparingSongId !== song.id) {
-      setPreparingSongId(song.id);
-      prepareSlides.mutate({ id: song.id }, {
-        onSuccess: (updated) => { setSelectedSong(updated); setPreparingSongId(null); },
-        onError: () => setPreparingSongId(null),
       });
     }
   };
@@ -475,19 +463,15 @@ export default function Home() {
 
   const startSelectedPresentation = (song: Song, mode: OutputMode) => {
     setPreferredOutputMode(mode);
+    setPlayingSongs([song]);
     setOutputPickerSong(null);
-    // An empty JSON array (`[]`) is also an unprepared PPT and must be rendered.
-    if (parseSlideImages(song.slideImages).length === 0 && song.fileKey) {
+    if (!song.slideImages && song.fileKey) {
       setPreparingSongId(song.id);
-      toast.info("PPT 화면을 준비하고 있어요. 잠시만 기다려 주세요.");
       prepareSlides.mutate({ id: song.id }, {
         onSuccess: (updated) => { setPlayingSongs([updated]); setPreparingSongId(null); },
         onError: (error) => { setPreparingSongId(null); toast.error(error.message || "PPT 슬라이드를 준비하지 못했어요."); },
       });
-      return;
     }
-    // Already-rendered PPTs open immediately with the real first slide.
-    setPlayingSongs([song]);
   };
 
   const saveSong = async (form: FormState, file: File | null) => {
@@ -610,7 +594,7 @@ export default function Home() {
           <section className={`upload-card ${isDragging ? "is-dragging" : ""}`} onDragOver={(event) => { event.preventDefault(); setIsDragging(true); }} onDragLeave={() => setIsDragging(false)} onDrop={dropFile}><div className="upload-inner"><div className="upload-symbol"><UploadCloud size={25} strokeWidth={1.7} /></div><div className="upload-copy"><strong>PPT를 놓거나 새 곡을 추가하세요</strong><span>{adminPassword ? "관리자 모드에서 곡 이름·분류를 저장하고 원본 PPT를 올릴 수 있어요." : "곡을 추가하려면 관리자 모드를 먼저 시작해 주세요."}</span></div><div className="upload-actions">{adminPassword && <button className="upload-button upload-button-secondary" onClick={(event) => { event.stopPropagation(); void prepareAllStoredSlides(); }} disabled={prepareManySlides.isPending || prepareAllProgress.done > 0 && prepareAllProgress.done < prepareAllProgress.total}>{prepareManySlides.isPending || (prepareAllProgress.done > 0 && prepareAllProgress.done < prepareAllProgress.total) ? `PPT 준비 ${prepareAllProgress.done}/${prepareAllProgress.total}` : "전체 PPT 준비"}</button>}<button className="upload-button upload-button-secondary" onClick={(event) => { event.stopPropagation(); if (!adminPassword) { openAdminGate(); return; } setBulkOpen(true); }}><UploadCloud size={16} /> 최대 700개</button><button className="upload-button" onClick={(event) => { event.stopPropagation(); openEditor(null); }}><Plus size={17} /> 곡 추가</button></div></div></section>
 
           <section className="library-section"><div className="section-heading"><div><div className="section-kicker">YOUR SONGS</div><h2>{activeCategory}</h2><span className="result-count">{filteredSongs.length}곡</span></div><div className="view-tools"><div className="search-box"><Search size={17} /><input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="곡 이름 검색" aria-label="곡 이름 검색" /></div>{worshipQueueIds.length > 0 && <button className="worship-start-button" onClick={startWorshipMode}><MonitorPlay size={15} /> 예배 시작 ({worshipQueueIds.length})</button>}</div></div>
-            {songsQuery.isLoading ? <div className="loading-state"><LoaderCircle className="spin" size={25} /><span>찬양곡을 불러오는 중이에요...</span></div> : filteredSongs.length ? <div className="song-list">{filteredSongs.map((song) => <article className="song-card song-card-clean" key={song.id} onClick={() => openSongDetails(song)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); openSongDetails(song); } }} role="button" tabIndex={0} aria-label={`${song.title} 상세 열기`}><div className="song-preview"><MusicPaper song={song} compact /></div><div className="song-main"><div className="song-title-line"><div><h3>{song.title}</h3><div className="song-meta"><span className={`category-badge badge-${song.category === "찬송가" ? "hymn" : "ccm"}`}>{song.category}</span>{song.category === "찬송가" && song.hymnNumber && <span className="hymn-number-badge">{song.hymnNumber}장</span>}<span>{formatUpdated(song.updatedAt)}</span></div></div><ChevronRight className="song-card-arrow" size={18} /></div><div className="song-bottom"><FileTypeBadge song={song} /><span className="slide-count"><FileMusic size={13} /> {song.slideCount} slides</span><span className="song-open-hint">카드를 눌러 열기</span></div></div></article>)}</div> : <div className="empty-state"><FolderOpen size={25} /><h3>{searchQuery ? "검색 결과가 없어요" : "아직 곡이 없어요"}</h3><p>관리자 모드에서 첫 곡을 등록해 보세요.</p><button onClick={() => openEditor(null)}><Plus size={15} /> 곡 추가</button></div>}
+            {songsQuery.isLoading ? <div className="loading-state"><LoaderCircle className="spin" size={25} /><span>찬양곡을 불러오는 중이에요...</span></div> : filteredSongs.length ? <div className="song-list">{filteredSongs.map((song) => <article className="song-card song-card-clean" key={song.id} onClick={() => setSelectedSong(song)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); setSelectedSong(song); } }} role="button" tabIndex={0} aria-label={`${song.title} 상세 열기`}><div className="song-preview"><MusicPaper song={song} compact /></div><div className="song-main"><div className="song-title-line"><div><h3>{song.title}</h3><div className="song-meta"><span className={`category-badge badge-${song.category === "찬송가" ? "hymn" : "ccm"}`}>{song.category}</span>{song.category === "찬송가" && song.hymnNumber && <span className="hymn-number-badge">{song.hymnNumber}장</span>}<span>{formatUpdated(song.updatedAt)}</span></div></div><ChevronRight className="song-card-arrow" size={18} /></div><div className="song-bottom"><FileTypeBadge song={song} /><span className="slide-count"><FileMusic size={13} /> {song.slideCount} slides</span><span className="song-open-hint">카드를 눌러 열기</span></div></div></article>)}</div> : <div className="empty-state"><FolderOpen size={25} /><h3>{searchQuery ? "검색 결과가 없어요" : "아직 곡이 없어요"}</h3><p>관리자 모드에서 첫 곡을 등록해 보세요.</p><button onClick={() => openEditor(null)}><Plus size={15} /> 곡 추가</button></div>}
           </section>
           <footer className="page-footer"><span>찬양창고 · 함께 만드는 예배 자료실</span><span>{songsQuery.dataUpdatedAt ? `마지막 동기화 ${formatUpdated(new Date(songsQuery.dataUpdatedAt))}` : "실시간 연결 중"}</span></footer>
         </div>
