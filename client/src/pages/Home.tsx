@@ -13,6 +13,7 @@ import {
   FolderOpen,
   LockKeyhole,
   LibraryBig,
+  ListPlus,
   LoaderCircle,
   Menu,
   MonitorPlay,
@@ -126,32 +127,37 @@ function parseSlideImages(value: string | null | undefined): string[] {
   }
 }
 
-function PresentationMode({ song, onClose, preparing = false }: { song: Song; onClose: () => void; preparing?: boolean }) {
+function PresentationMode({ song, playlist = [song], onClose, preparing = false }: { song: Song; playlist?: Song[]; onClose: () => void; preparing?: boolean }) {
   const [slide, setSlide] = useState(1);
+  const [songIndex, setSongIndex] = useState(Math.max(0, playlist.findIndex((item) => item.id === song.id)));
   const stageRef = useRef<HTMLDivElement>(null);
-  const slideImages = parseSlideImages(song.slideImages);
-  const totalSlides = slideImages.length || Math.max(1, song.slideCount);
+  const currentSong = playlist[songIndex] ?? song;
+  const slideImages = parseSlideImages(currentSong.slideImages);
+  const totalSlides = slideImages.length || Math.max(1, currentSong.slideCount);
+
+  const moveNext = () => {
+    if (slide < totalSlides) setSlide((value) => value + 1);
+    else if (songIndex < playlist.length - 1) { setSongIndex((value) => value + 1); setSlide(1); }
+  };
+  const movePrevious = () => {
+    if (slide > 1) setSlide((value) => value - 1);
+    else if (songIndex > 0) { setSongIndex((value) => value - 1); setSlide(1); }
+  };
 
   useEffect(() => {
     stageRef.current?.requestFullscreen?.().catch(() => undefined);
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
-      if (event.key === "ArrowRight" || event.key === " ") setSlide((value) => Math.min(totalSlides, value + 1));
-      if (event.key === "ArrowLeft") setSlide((value) => Math.max(1, value - 1));
+      if (event.key === "ArrowRight" || event.key === " ") moveNext();
+      if (event.key === "ArrowLeft") movePrevious();
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [onClose, totalSlides]);
+  });
 
-  // Load every slide into the browser cache as soon as the slideshow opens.
-  // Without this, each key press waits for a fresh storage request.
   useEffect(() => {
-    slideImages.forEach((src) => {
-      const preload = new Image();
-      preload.decoding = "async";
-      preload.src = src;
-    });
-  }, [song.id, song.slideImages]);
+    slideImages.forEach((src) => { const preload = new Image(); preload.decoding = "async"; preload.src = src; });
+  }, [currentSong.id, currentSong.slideImages]);
 
   const image = slideImages[slide - 1];
   return (
@@ -337,6 +343,7 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState("");
   const [editor, setEditor] = useState<Song | null | undefined>(undefined);
   const [playingSong, setPlayingSong] = useState<Song | null>(null);
+  const [playlistSongs, setPlaylistSongs] = useState<Song[]>([]);
   const [extendedSong, setExtendedSong] = useState<Song | null>(null);
   const extendedWindowRef = useRef<Window | null>(null);
   const [menuSongId, setMenuSongId] = useState<number | null>(null);
@@ -396,12 +403,24 @@ export default function Home() {
     if (parseSlideImages(song.slideImages).length === 0 && song.fileKey) {
       setPreparingSongId(song.id);
       prepareSlides.mutate({ id: song.id }, {
-        onSuccess: (updated) => { setPlayingSong(updated); setPreparingSongId(null); },
+        onSuccess: (updated) => { setPlaylistSongs((current) => current.map((item) => item.id === updated.id ? updated : item)); setPlayingSong(updated); setPreparingSongId(null); },
         onError: (error) => { setPreparingSongId(null); toast.error(error.message || "PPT 슬라이드를 준비하지 못했어요."); },
       });
       return;
     }
     setPlayingSong(song);
+  };
+
+  const addToPlaylist = (song: Song) => {
+    setPlaylistSongs((current) => current.some((item) => item.id === song.id) ? current : [...current, song]);
+    toast.success(`${song.title}을(를) 재생목록에 추가했어요.`);
+  };
+
+  const removeFromPlaylist = (songId: number) => setPlaylistSongs((current) => current.filter((item) => item.id !== songId));
+
+  const startPlaylist = () => {
+    if (!playlistSongs.length) { toast.info("먼저 PPT 카드의 재생목록 추가 아이콘을 눌러 주세요."); return; }
+    openPresentation(playlistSongs[0]);
   };
 
   const openExtendedPresentation = (song: Song) => {
@@ -545,8 +564,9 @@ export default function Home() {
 
           <section className={`upload-card ${isDragging ? "is-dragging" : ""}`} onDragOver={(event) => { event.preventDefault(); setIsDragging(true); }} onDragLeave={() => setIsDragging(false)} onDrop={dropFile}><div className="upload-inner"><div className="upload-symbol"><UploadCloud size={25} strokeWidth={1.7} /></div><div className="upload-copy"><strong>PPT를 놓거나 새 곡을 추가하세요</strong><span>{adminPassword ? "관리자 모드에서 곡 이름·분류를 저장하고 원본 PPT를 올릴 수 있어요." : "곡을 추가하려면 관리자 모드를 먼저 시작해 주세요."}</span></div><div className="upload-actions">{adminPassword && <button className="upload-button upload-button-secondary" onClick={(event) => { event.stopPropagation(); void prepareAllStoredSlides(); }} disabled={prepareManySlides.isPending || prepareAllProgress.done > 0 && prepareAllProgress.done < prepareAllProgress.total}>{prepareManySlides.isPending || (prepareAllProgress.done > 0 && prepareAllProgress.done < prepareAllProgress.total) ? `PPT 준비 ${prepareAllProgress.done}/${prepareAllProgress.total}` : "전체 PPT 준비"}</button>}<button className="upload-button upload-button-secondary" onClick={(event) => { event.stopPropagation(); if (!adminPassword) { openAdminGate(); return; } setBulkOpen(true); }}><UploadCloud size={16} /> 최대 700개</button><button className="upload-button" onClick={(event) => { event.stopPropagation(); openEditor(null); }}><Plus size={17} /> 곡 추가</button></div></div></section>
 
+          {playlistSongs.length > 0 && <section className="playlist-panel"><div className="playlist-panel-head"><div><div className="section-kicker">PPT PLAYLIST</div><strong>재생목록 {playlistSongs.length}곡</strong><span>마지막 슬라이드 뒤 다음 PPT가 자동으로 이어집니다.</span></div><div className="playlist-panel-actions"><button className="playlist-start" onClick={startPlaylist}><Play size={14} fill="currentColor" /> 재생 시작</button><button className="playlist-clear" onClick={() => setPlaylistSongs([])}>전체 비우기</button></div></div><div className="playlist-items">{playlistSongs.map((item, index) => <div className="playlist-item" key={item.id}><span className="playlist-index">{index + 1}</span><span>{item.category === "찬송가" && item.hymnNumber ? `${item.hymnNumber}장 ` : ""}{item.title}</span><button onClick={() => removeFromPlaylist(item.id)} aria-label={`${item.title} 재생목록에서 제거`}><X size={14} /></button></div>)}</div></section>}
           <section className="library-section"><div className="section-heading"><div><div className="section-kicker">YOUR SONGS</div><h2>{activeCategory}</h2><span className="result-count">{filteredSongs.length}곡</span></div><div className="view-tools"><div className="search-box"><Search size={17} /><input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="곡 이름 검색" aria-label="곡 이름 검색" /></div><button className="refresh-chip" onClick={() => songsQuery.refetch()}><span className="refresh-dot" /> 새로고침</button></div></div>
-            {songsQuery.isLoading ? <div className="loading-state"><LoaderCircle className="spin" size={25} /><span>찬양곡을 불러오는 중이에요...</span></div> : filteredSongs.length ? <div className="song-list">{filteredSongs.map((song) => <article className="song-card" key={song.id}><div className="song-preview"><MusicPaper song={song} compact /></div><div className="song-main"><div className="song-title-line"><div><h3>{song.title}</h3><div className="song-meta"><span className={`category-badge badge-${song.category === "찬송가" ? "hymn" : "ccm"}`}>{song.category}</span>{song.category === "찬송가" && song.hymnNumber && <span className="hymn-number-badge">{song.hymnNumber}장</span>}<span>{formatUpdated(song.updatedAt)}</span></div></div><div className="song-menu-wrap"><button className="more-button" onClick={(event) => { event.stopPropagation(); setMenuSongId(menuSongId === song.id ? null : song.id); }} aria-label={`${song.title} 메뉴`}><MoreHorizontal size={19} /></button>{menuSongId === song.id && <div className="song-menu" onClick={(event) => event.stopPropagation()}><button onClick={() => { openEditor(song); setMenuSongId(null); }}><Pencil size={14} /> 곡 정보 수정</button><button className="danger" onClick={() => { if (!adminPassword) { setMenuSongId(null); openAdminGate(); return; } if (window.confirm(`'${song.title}' 곡을 삭제할까요?`)) removeSong.mutate({ id: song.id, adminPassword }); setMenuSongId(null); }}><Trash2 size={14} /> 곡 삭제</button></div>}</div></div><div className="song-bottom"><FileTypeBadge song={song} /><span className="slide-count"><FileMusic size={13} /> {song.slideCount} slides</span><div className="song-actions"><button className="slide-action" onClick={() => openPresentation(song)}><Play size={14} fill="currentColor" /> 슬라이드쇼</button><button className="extended-action" onClick={() => openExtendedPresentation(song)} aria-label={`${song.title} 확장 화면`} title="확장 화면"><MonitorPlay size={16} /></button><button className="download-action" onClick={() => downloadSong(song)} aria-label={`${song.title} 다운로드`}><ArrowDownToLine size={17} /></button></div></div></div></article>)}</div> : <div className="empty-state"><FolderOpen size={25} /><h3>{searchQuery ? "검색 결과가 없어요" : "아직 곡이 없어요"}</h3><p>관리자 모드에서 첫 곡을 등록해 보세요.</p><button onClick={() => openEditor(null)}><Plus size={15} /> 곡 추가</button></div>}
+            {songsQuery.isLoading ? <div className="loading-state"><LoaderCircle className="spin" size={25} /><span>찬양곡을 불러오는 중이에요...</span></div> : filteredSongs.length ? <div className="song-list">{filteredSongs.map((song) => <article className="song-card" key={song.id}><div className="song-preview"><MusicPaper song={song} compact /></div><div className="song-main"><div className="song-title-line"><div><h3>{song.title}</h3><div className="song-meta"><span className={`category-badge badge-${song.category === "찬송가" ? "hymn" : "ccm"}`}>{song.category}</span>{song.category === "찬송가" && song.hymnNumber && <span className="hymn-number-badge">{song.hymnNumber}장</span>}<span>{formatUpdated(song.updatedAt)}</span></div></div><div className="song-menu-wrap"><button className="more-button" onClick={(event) => { event.stopPropagation(); setMenuSongId(menuSongId === song.id ? null : song.id); }} aria-label={`${song.title} 메뉴`}><MoreHorizontal size={19} /></button>{menuSongId === song.id && <div className="song-menu" onClick={(event) => event.stopPropagation()}><button onClick={() => { openEditor(song); setMenuSongId(null); }}><Pencil size={14} /> 곡 정보 수정</button><button className="danger" onClick={() => { if (!adminPassword) { setMenuSongId(null); openAdminGate(); return; } if (window.confirm(`'${song.title}' 곡을 삭제할까요?`)) removeSong.mutate({ id: song.id, adminPassword }); setMenuSongId(null); }}><Trash2 size={14} /> 곡 삭제</button></div>}</div></div><div className="song-bottom"><FileTypeBadge song={song} /><span className="slide-count"><FileMusic size={13} /> {song.slideCount} slides</span><div className="song-actions"><button className="slide-action" onClick={() => openPresentation(song)}><Play size={14} fill="currentColor" /> 슬라이드쇼</button><button className="playlist-add-action" onClick={() => addToPlaylist(song)} aria-label={`${song.title} 재생목록에 추가`} title="재생목록에 추가"><ListPlus size={16} /></button><button className="extended-action" onClick={() => openExtendedPresentation(song)} aria-label={`${song.title} 확장 화면`} title="확장 화면"><MonitorPlay size={16} /></button><button className="download-action" onClick={() => downloadSong(song)} aria-label={`${song.title} 다운로드`}><ArrowDownToLine size={17} /></button></div></div></div></article>)}</div> : <div className="empty-state"><FolderOpen size={25} /><h3>{searchQuery ? "검색 결과가 없어요" : "아직 곡이 없어요"}</h3><p>관리자 모드에서 첫 곡을 등록해 보세요.</p><button onClick={() => openEditor(null)}><Plus size={15} /> 곡 추가</button></div>}
           </section>
           <footer className="page-footer"><span>찬양창고 · 함께 만드는 예배 자료실</span><span>{songsQuery.dataUpdatedAt ? `마지막 동기화 ${formatUpdated(new Date(songsQuery.dataUpdatedAt))}` : "실시간 연결 중"}</span></footer>
         </div>
@@ -554,7 +574,7 @@ export default function Home() {
       {adminGateOpen && <AdminGate onClose={() => setAdminGateOpen(false)} onUnlock={unlockAdmin} />}
       {bulkOpen && <BulkUploadModal onClose={() => setBulkOpen(false)} onSubmit={bulkUpload} saving={bulkSaving} progress={bulkProgress} />}
       {editor !== undefined && <SongEditor song={editor} onClose={() => setEditor(undefined)} onSubmit={saveSong} saving={createSong.isPending || updateSong.isPending} />}
-      {playingSong && <PresentationMode song={playingSong} preparing={preparingSongId === playingSong.id} onClose={() => { setPlayingSong(null); setPreparingSongId(null); }} />}
+      {playingSong && <PresentationMode song={playingSong} playlist={playlistSongs.length ? playlistSongs : [playingSong]} preparing={preparingSongId === playingSong.id} onClose={() => { setPlayingSong(null); setPreparingSongId(null); }} />}
       {extendedSong && <ExtendedPresentationMode song={extendedSong} outputWindow={extendedWindowRef.current} preparing={preparingSongId === extendedSong.id} onClose={closeExtendedPresentation} />}
     </div>
   );
