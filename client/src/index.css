@@ -310,37 +310,29 @@ h1 em { color: #b28651; font-style: normal; }
 
 /* PPT-only playback: hide all slideshow chrome while preserving the library UI. */
 .ppt-only-mode,
-.ppt-only-mode:fullscreen {
-  position: fixed !important;
-  inset: 0 !important;
-  z-index: 9999 !important;
-  display: block !important;
-  width: 100vw !important;
-  height: 100vh !important;
-  padding: 0 !important;
-  overflow: hidden !important;
-  background: #111820 !important;
-}
+.ppt-only-mode:fullscreen { position: fixed !important; inset: 0 !important; z-index: 9999 !important; display: block !important; width: 100vw !important; height: 100vh !important; padding: 0 !important; overflow: hidden !important; background: #111820 !important; }
 .ppt-only-mode .slideshow-stage,
-.ppt-only-mode:fullscreen .slideshow-stage {
-  position: absolute !important;
-  inset: 0 !important;
-  display: block !important;
-  width: 100% !important;
-  height: 100% !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  overflow: hidden !important;
-  background: #111820 !important;
-}
+.ppt-only-mode:fullscreen .slideshow-stage { position: absolute !important; inset: 0 !important; display: block !important; width: 100% !important; height: 100% !important; padding: 0 !important; margin: 0 !important; overflow: hidden !important; background: #111820 !important; }
 .ppt-only-mode .ppt-only-image,
-.ppt-only-mode:fullscreen .ppt-only-image {
-  display: block !important;
-  position: absolute !important;
-  inset: 0 !important;
-  width: 100vw !important;
-  height: 100vh !important;
-  max-width: none !important;
-  object-fit: cover !important;
-  background: #111820 !important;
-}
+.ppt-only-mode:fullscreen .ppt-only-image { display: block !important; position: absolute !important; inset: 0 !important; width: 100vw !important; height: 100vh !important; max-width: none !important; object-fit: cover !important; background: #111820 !important; }
+
+/* Extended presenter: computer gets current slide with small previous/next previews. */
+.extended-action { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; padding: 0; color: #49677d; background: #eef2f0; border: 1px solid #d8e2de; border-radius: 7px; cursor: pointer; transition: transform .16s ease, background .16s ease; }
+.extended-action:hover { background: #e2ece8; transform: translateY(-1px); }
+.extended-action:active { transform: scale(.97); }
+.extended-presenter { position: fixed; inset: 0; z-index: 10000; display: flex; flex-direction: column; color: #ecf2f3; background: #111820; }
+.extended-presenter-bar { display: flex; align-items: center; gap: 16px; min-height: 54px; padding: 0 22px; background: #17232d; border-bottom: 1px solid rgba(255,255,255,.08); }
+.extended-presenter-bar strong { color: #f0c979; font-size: 14px; }
+.extended-presenter-bar span { color: rgba(236,242,243,.62); font-size: 11px; }
+.extended-presenter-bar .icon-button { margin-left: auto; }
+.extended-stage { display: grid; grid-template-columns: minmax(120px, 18vw) minmax(0, 1fr) minmax(120px, 18vw); align-items: center; gap: 18px; flex: 1; min-height: 0; padding: 24px; }
+.extended-current { position: relative; display: grid; place-items: center; width: 100%; height: min(76vh, calc(100vw * .48)); min-height: 240px; overflow: hidden; background: #0b1015; border: 1px solid rgba(255,255,255,.12); box-shadow: 0 18px 50px rgba(0,0,0,.3); }
+.extended-current > img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.extended-side { display: flex; flex-direction: column; gap: 8px; color: rgba(236,242,243,.58); font-size: 10px; text-align: center; }
+.extended-side img, .extended-empty { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; background: #0b1015; border: 1px solid rgba(255,255,255,.12); border-radius: 6px; opacity: .82; }
+.extended-empty { opacity: .35; }
+.extended-next img { opacity: .62; }
+.extended-slide-count { position: absolute; right: 12px; bottom: 10px; padding: 5px 8px; color: rgba(255,255,255,.78); background: rgba(0,0,0,.52); border-radius: 4px; font-family: 'DM Mono', monospace; font-size: 10px; }
+.extended-loading { display: flex; flex-direction: column; align-items: center; gap: 10px; color: rgba(255,255,255,.72); font-size: 12px; }
+.extended-help { padding: 12px; color: rgba(236,242,243,.5); background: #17232d; text-align: center; font-size: 10px; }
+@media (max-width: 760px) { .extended-stage { grid-template-columns: 72px minmax(0, 1fr) 72px; gap: 8px; padding: 10px; }.extended-presenter-bar { padding: 0 12px; }.extended-presenter-bar span { display: none; } }
