@@ -19,12 +19,16 @@ export async function renderSlideImages(bytes: Buffer, fileName: string): Promis
   const extension = extname(fileName).toLowerCase();
   const stem = basename(fileName, extname(fileName)).replace(/[^a-zA-Z0-9._-]/g, "_");
   const outputPrefix = join(workDir, "slide");
+  const libreOfficeProfile = join(workDir, "libreoffice-profile");
 
   try {
     await writeFile(sourcePath, bytes);
     let pdfPath = sourcePath;
     if (extension === ".ppt" || extension === ".pptx") {
-      await execFileAsync("libreoffice", ["--headless", "--convert-to", "pdf", "--outdir", workDir, sourcePath], { timeout: 180_000 });
+      // Each request gets its own temporary LibreOffice profile. Without this,
+      // simultaneous uploads can lock the shared profile and silently produce
+      // no PDF, leaving the song without playable slides.
+      await execFileAsync("libreoffice", [`-env:UserInstallation=file://${libreOfficeProfile}`, "--headless", "--convert-to", "pdf:impress_pdf_Export", "--outdir", workDir, sourcePath], { timeout: 180_000 });
       pdfPath = join(workDir, `${stem}.pdf`);
     }
     if (extension !== ".pdf" && extension !== ".ppt" && extension !== ".pptx") return [];
