@@ -38,7 +38,7 @@ async function saveFile(file: z.infer<NonNullable<typeof fileInput>>) {
   const safeName = file.fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
   const bytes = Buffer.from(file.fileData, "base64");
   const stored = await storagePut(`praise-library/${crypto.randomUUID()}-${safeName}`, bytes, file.mimeType);
-  const slideImages = await renderWithRetry(bytes, file.fileName);
+  const slideImages = await renderSlideImages(bytes, file.fileName);
   return {
     fileName: file.fileName,
     fileKey: stored.key,
@@ -61,15 +61,6 @@ function inferHymnNumber(fileName: string): number | null {
   const match = stem.match(/(?:^|[\s_-])(?:제\s*)?(\d{1,3})(?:\s*장)?(?:$|[\s_.-])/i) ?? stem.match(/^(?:제\s*)?(\d{1,3})/i);
   const number = match ? Number(match[1]) : NaN;
   return Number.isInteger(number) && number >= 1 && number <= 999 ? number : null;
-}
-
-async function renderWithRetry(bytes: Buffer, fileName: string, attempts = 3) {
-  for (let attempt = 1; attempt <= attempts; attempt += 1) {
-    const rendered = await renderSlideImages(bytes, fileName);
-    if (rendered.length) return rendered;
-    if (attempt < attempts) await new Promise(resolve => setTimeout(resolve, 750 * attempt));
-  }
-  return [];
 }
 
 export const appRouter = router({
@@ -112,7 +103,7 @@ export const appRouter = router({
       const signedUrl = await storageGetSignedUrl(current.fileKey);
       const response = await fetch(signedUrl);
       if (!response.ok) throw new Error("원본 PPT를 불러오지 못했어요.");
-      const rendered = await renderWithRetry(Buffer.from(await response.arrayBuffer()), current.fileName ?? `${current.title}.pptx`);
+      const rendered = await renderSlideImages(Buffer.from(await response.arrayBuffer()), current.fileName ?? `${current.title}.pptx`);
       if (!rendered.length) throw new Error("PPT를 슬라이드 이미지로 변환하지 못했어요.");
       return updateSong(input.id, { slideImages: JSON.stringify(rendered), slideCount: rendered.length });
     }),
@@ -124,7 +115,7 @@ export const appRouter = router({
         const signedUrl = await storageGetSignedUrl(current.fileKey);
         const response = await fetch(signedUrl);
         if (!response.ok) continue;
-        const rendered = await renderWithRetry(Buffer.from(await response.arrayBuffer()), current.fileName ?? `${current.title}.pptx`);
+        const rendered = await renderSlideImages(Buffer.from(await response.arrayBuffer()), current.fileName ?? `${current.title}.pptx`);
         if (rendered.length) results.push(await updateSong(id, { slideImages: JSON.stringify(rendered), slideCount: rendered.length }));
       }
       return results;
