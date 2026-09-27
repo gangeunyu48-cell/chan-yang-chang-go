@@ -142,11 +142,21 @@ function PresentationMode({ song, onClose, preparing = false }: { song: Song; on
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [onClose, totalSlides]);
 
+  // Load every slide into the browser cache as soon as the slideshow opens.
+  // Without this, each key press waits for a fresh storage request.
+  useEffect(() => {
+    slideImages.forEach((src) => {
+      const preload = new Image();
+      preload.decoding = "async";
+      preload.src = src;
+    });
+  }, [song.id, song.slideImages]);
+
   const image = slideImages[slide - 1];
   return (
     <div ref={stageRef} className="slideshow-overlay ppt-only-mode" role="dialog" aria-modal="true" aria-label="PPT 슬라이드쇼">
       <div className="slideshow-stage">
-        {preparing ? null : image ? <img className="real-slide-image ppt-only-image" src={image} alt="PPT 슬라이드" /> : null}
+        {preparing ? null : image ? <img className="real-slide-image ppt-only-image" src={image} alt="PPT 슬라이드" loading="eager" decoding="sync" fetchPriority="high" /> : null}
       </div>
     </div>
   );
