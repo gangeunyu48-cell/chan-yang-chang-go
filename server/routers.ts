@@ -33,12 +33,12 @@ const bulkFileInput = z.object({
   fileSize: z.number().int().nonnegative().max(50_000_000),
 });
 
-async function saveFile(file: z.infer<NonNullable<typeof fileInput>>) {
+async function saveFile(file: z.infer<NonNullable<typeof fileInput>>, renderSlides = true) {
   if (!file) return {};
   const safeName = file.fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
   const bytes = Buffer.from(file.fileData, "base64");
   const stored = await storagePut(`praise-library/${crypto.randomUUID()}-${safeName}`, bytes, file.mimeType);
-  const slideImages = await renderSlideImages(bytes, file.fileName);
+  const slideImages = renderSlides ? await renderSlideImages(bytes, file.fileName) : [];
   return {
     fileName: file.fileName,
     fileKey: stored.key,
@@ -87,11 +87,15 @@ export const appRouter = router({
     bulkCreate: publicProcedure.input(z.object({ adminPassword: z.string().min(1), category: z.enum(categories), files: z.array(bulkFileInput).min(1).max(700) })).mutation(async ({ input }) => {
       assertAdminPassword(input.adminPassword);
       const results = [];
+      const existingHymns = new Set((await listSongs()).filter((song) => song.category === "찬송가" && song.hymnNumber).map((song) => song.hymnNumber as number));
       for (let index = 0; index < input.files.length; index += 1) {
         const file = input.files[index];
-        const stored = await saveFile(file);
+        const hymnNumber = input.category === "찬송가" ? inferHymnNumber(file.fileName) : null;
+        if (hymnNumber && existingHymns.has(hymnNumber)) continue;
+        const stored = await saveFile(file, false);
         const title = file.fileName.replace(/\.(pptx?|pdf)$/i, "").replace(/[_-]+/g, " ").trim();
-        results.push(await createSong({ title: title || `새 곡 ${index + 1}`, category: input.category, hymnNumber: input.category === "찬송가" ? inferHymnNumber(file.fileName) : null, slideCount: 1, color: colors[index % colors.length], ...stored }));
+        results.push(await createSong({ title: title || `새 곡 ${index + 1}`, category: input.category, hymnNumber, slideCount: 1, color: colors[index % colors.length], ...stored }));
+        if (hymnNumber) existingHymns.add(hymnNumber);
       }
       return results;
     }),

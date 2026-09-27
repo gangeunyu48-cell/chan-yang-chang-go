@@ -188,7 +188,7 @@ function AdminGate({ onClose, onUnlock }: { onClose: () => void; onUnlock: (pass
 
 function BulkUploadModal({ onClose, onSubmit, saving, progress }: { onClose: () => void; onSubmit: (files: File[], category: "찬송가" | "CCM") => void; saving: boolean; progress: { done: number; total: number } }) {
   const [files, setFiles] = useState<File[]>([]);
-  const [category, setCategory] = useState<"찬송가" | "CCM">("CCM");
+  const [category, setCategory] = useState<"찬송가" | "CCM">("찬송가");
   const chooseFiles = (event: ChangeEvent<HTMLInputElement>) => {
     const selected = Array.from(event.target.files ?? []);
     const valid = selected.filter((file) => /\.(ppt|pptx|pdf)$/i.test(file.name) && file.size <= 50 * 1024 * 1024);
@@ -367,37 +367,34 @@ export default function Home() {
     setBulkSaving(true);
     setBulkProgress({ done: 0, total: files.length });
     try {
-      const payload: FilePayload[] = [];
-      for (const file of files) {
-        try {
-          payload.push(await encodeFile(file));
-        } catch {
-          throw new Error(`${file.name} 파일을 읽지 못했어요.`);
-        }
-      }
-      // JSON 본문 제한을 피하기 위해 약 60MB 이하의 묶음으로 나눠 전송합니다.
-      const batches: FilePayload[][] = [];
+      let completed = 0;
       let batch: FilePayload[] = [];
       let batchSize = 0;
-      for (const item of payload) {
-        const itemSize = item.fileData.length;
-        if (batch.length && batchSize + itemSize > 60_000_000) {
-          batches.push(batch);
-          batch = [];
-          batchSize = 0;
-        }
-        batch.push(item);
-        batchSize += itemSize;
-      }
-      if (batch.length) batches.push(batch);
-      let completed = 0;
-      for (const currentBatch of batches) {
+      const sendBatch = async () => {
+        if (!batch.length) return;
+        const currentBatch = batch;
+        batch = [];
+        batchSize = 0;
         await bulkCreate.mutateAsync({ adminPassword, category, files: currentBatch });
         completed += currentBatch.length;
         setBulkProgress({ done: completed, total: files.length });
+      };
+      // Encode and send incrementally so 180 files do not fill the browser memory.
+      // Keep each request well below the server's JSON body limit.
+      for (const file of files) {
+        let item: FilePayload;
+        try {
+          item = await encodeFile(file);
+        } catch {
+          throw new Error(`${file.name} 파일을 읽지 못했어요.`);
+        }
+        if (batch.length && batchSize + item.fileData.length > 30_000_000) await sendBatch();
+        batch.push(item);
+        batchSize += item.fileData.length;
       }
+      await sendBatch();
       await utils.songs.list.invalidate();
-      toast.success(`${files.length}개 곡을 추가했어요.`);
+      toast.success(`${files.length}개 파일을 저장했어요. 필요하면 '전체 PPT 준비' 버튼으로 슬라이드를 만들 수 있어요.`);
       setBulkOpen(false);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "일괄 업로드에 실패했어요.");
