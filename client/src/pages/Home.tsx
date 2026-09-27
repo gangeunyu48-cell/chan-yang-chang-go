@@ -130,8 +130,6 @@ function PresentationMode({ song, onClose, preparing = false }: { song: Song; on
   const stageRef = useRef<HTMLDivElement>(null);
   const slideImages = parseSlideImages(song.slideImages);
   const totalSlides = slideImages.length || Math.max(1, song.slideCount);
-  const titles = [song.title, "Verse 01", "Chorus", "Bridge", "Ending"];
-  const currentTitle = titles[slide - 1] ?? `${song.title} · ${slide}`;
 
   useEffect(() => {
     stageRef.current?.requestFullscreen?.().catch(() => undefined);
@@ -144,30 +142,11 @@ function PresentationMode({ song, onClose, preparing = false }: { song: Song; on
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [onClose, totalSlides]);
 
-  const closePresentation = () => {
-    if (document.fullscreenElement) document.exitFullscreen().catch(() => undefined);
-    onClose();
-  };
-
+  const image = slideImages[slide - 1];
   return (
-    <div ref={stageRef} className="slideshow-overlay" role="dialog" aria-modal="true" aria-label={`${song.title} 슬라이드쇼`}>
-      <div className="slideshow-topbar">
-        <div className="slideshow-brand"><BrandMark /><span>{song.title}</span><span className="slideshow-divider">/</span><span className="slideshow-muted">{slide} / {totalSlides}</span></div>
-        <button className="icon-button icon-button-dark" onClick={closePresentation} aria-label="슬라이드쇼 닫기"><X size={20} /></button>
-      </div>
+    <div ref={stageRef} className="slideshow-overlay ppt-only-mode" role="dialog" aria-modal="true" aria-label="PPT 슬라이드쇼">
       <div className="slideshow-stage">
-        <button className="slide-nav" onClick={() => setSlide((value) => Math.max(1, value - 1))} disabled={slide === 1} aria-label="이전 슬라이드"><ArrowLeft size={22} /></button>
-        <div className={`presentation-slide ${slideImages.length ? "presentation-slide-real" : ""}`}>
-          <div className="presentation-kicker">찬양창고 · {song.category}{song.category === "찬송가" && song.hymnNumber ? ` · ${song.hymnNumber}장` : ""}</div>
-          {preparing ? <div className="presentation-preparing"><LoaderCircle size={25} className="spin" /><strong>실제 PPT 슬라이드를 준비하는 중이에요</strong><span>잠시 후 원본 악보 화면이 표시됩니다.</span></div> : slideImages.length ? <img className="real-slide-image" src={slideImages[slide - 1]} alt={`${song.title} ${slide}번 슬라이드`} /> : <><h2>{currentTitle}</h2><div className="presentation-line" /><div className="presentation-staff" aria-hidden="true">{[0, 1, 2, 3, 4].map((line) => <span key={line} style={{ top: `${25 + line * 18}px` }} />)}<b>♩</b><i>♪</i><em>♫</em><strong>♩</strong></div><div className="presentation-lyrics">주님의 은혜 안에 오늘도 노래합니다</div></>}
-          <div className="presentation-footer"><span>{song.category}</span><span>{String(slide).padStart(2, "0")}</span></div>
-        </div>
-        <button className="slide-nav" onClick={() => setSlide((value) => Math.min(totalSlides, value + 1))} disabled={slide === totalSlides} aria-label="다음 슬라이드"><ArrowRight size={22} /></button>
-      </div>
-      <div className="slideshow-controls">
-        <div className="slide-dots">{Array.from({ length: totalSlides }).map((_, index) => <button key={index} className={`slide-dot ${slide === index + 1 ? "active" : ""}`} onClick={() => setSlide(index + 1)} aria-label={`${index + 1}번 슬라이드`} />)}</div>
-        <span className="slideshow-hint">← → 또는 스페이스로 넘기기 · Esc로 나가기</span>
-        {song.fileUrl && <a className="slideshow-download" href={song.fileUrl} download={song.fileName ?? `${song.title}.pptx`}><ArrowDownToLine size={16} /> 원본 PPT</a>}
+        {preparing ? null : image ? <img className="real-slide-image ppt-only-image" src={image} alt="PPT 슬라이드" /> : null}
       </div>
     </div>
   );
@@ -340,14 +319,15 @@ export default function Home() {
   };
 
   const openPresentation = (song: Song) => {
-    setPlayingSong(song);
-    if (!song.slideImages && song.fileKey) {
+    if (parseSlideImages(song.slideImages).length === 0 && song.fileKey) {
       setPreparingSongId(song.id);
       prepareSlides.mutate({ id: song.id }, {
         onSuccess: (updated) => { setPlayingSong(updated); setPreparingSongId(null); },
         onError: (error) => { setPreparingSongId(null); toast.error(error.message || "PPT 슬라이드를 준비하지 못했어요."); },
       });
+      return;
     }
+    setPlayingSong(song);
   };
 
   const saveSong = async (form: FormState, file: File | null) => {
