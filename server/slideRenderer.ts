@@ -30,7 +30,8 @@ export async function renderSlideImages(bytes: Buffer, fileName: string): Promis
     }
     if (extension !== ".pdf" && extension !== ".ppt" && extension !== ".pptx") return [];
 
-    await execFileAsync("pdftoppm", ["-png", "-r", "110", pdfPath, outputPrefix], { timeout: 180_000 });
+    // PNG is lossless; 220 DPI keeps Korean lyrics and music notation sharp on large church screens.
+    await execFileAsync("pdftoppm", ["-png", "-r", "220", pdfPath, outputPrefix], { timeout: 180_000 });
     const renderedNames = (await readdir(workDir)).filter((name) => /^slide-\d+\.png$/i.test(name)).sort(naturalSort);
     const urls: string[] = [];
     for (const name of renderedNames) {
