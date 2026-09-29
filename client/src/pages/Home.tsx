@@ -25,6 +25,7 @@ import {
   Plus,
   RefreshCw,
   Search,
+  Settings,
   ShieldCheck,
   Trash2,
   UploadCloud,
@@ -36,6 +37,7 @@ import type { AppRouter } from "../../../server/routers";
 
 type Song = inferRouterOutputs<AppRouter>["songs"]["list"][number];
 type Category = "전체 악보" | "찬송가" | "CCM";
+type AppSettings = { theme: "light" | "dark"; background: "ivory" | "mist" | "sage" | "lavender"; fontScale: "small" | "medium" | "large"; uiScale: "compact" | "comfortable" };
 type FormState = { title: string; category: "찬송가" | "CCM"; hymnNumber: string; slideCount: string };
 
 type FilePayload = {
@@ -358,6 +360,25 @@ export default function Home() {
   const [bulkSaving, setBulkSaving] = useState(false);
   const [preparingSongId, setPreparingSongId] = useState<number | null>(null);
   const [prepareAllProgress, setPrepareAllProgress] = useState({ done: 0, total: 0 });
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [appSettings, setAppSettings] = useState<AppSettings>(() => {
+    try {
+      const saved = localStorage.getItem("changgo-settings");
+      return saved ? { theme: "light", background: "ivory", fontScale: "medium", uiScale: "comfortable", ...JSON.parse(saved) } : { theme: "light", background: "ivory", fontScale: "medium", uiScale: "comfortable" };
+    } catch { return { theme: "light", background: "ivory", fontScale: "medium", uiScale: "comfortable" }; }
+  });
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.dataset.archiveTheme = appSettings.theme;
+    root.dataset.archiveBackground = appSettings.background;
+    root.dataset.archiveFont = appSettings.fontScale;
+    root.dataset.archiveDensity = appSettings.uiScale;
+    localStorage.setItem("changgo-settings", JSON.stringify(appSettings));
+  }, [appSettings]);
+
+  const updateSettings = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => setAppSettings((current) => ({ ...current, [key]: value }));
+  const resetSettings = () => setAppSettings({ theme: "light", background: "ivory", fontScale: "medium", uiScale: "comfortable" });
 
   const filteredSongs = useMemo(() => songs.filter((song) => {
     const categoryMatch = activeCategory === "전체 악보" || song.category === activeCategory;
@@ -594,7 +615,15 @@ export default function Home() {
       </aside>
 
       <main className="main-content">
-        <header className="topbar"><div className="breadcrumb"><span className="breadcrumb-muted">Library</span><ChevronRight size={14} /><span>{activeCategory}</span></div><div className="topbar-actions"><span className="live-status"><span /> 실시간 동기화</span>{playlistSongs.length >= 2 && <button className="playlist-connect-button" onClick={startPlaylist} title="선택한 PPT 연결 재생"><Link2 size={15} /> PPT 연결 재생 <span>{playlistSongs.length}</span></button>}<button className={`admin-mode-button ${adminPassword ? "active" : ""}`} onClick={() => adminPassword ? setAdminPassword("") : openAdminGate()}><span className="admin-mode-icon">{adminPassword ? <ShieldCheck size={14} /> : <LockKeyhole size={14} />}</span>{adminPassword ? "관리자 모드 ON" : "관리자 모드"}</button><button className="top-icon-button" onClick={() => songsQuery.refetch()} aria-label="새로고침" title="새로고침"><RefreshCw size={18} /></button></div></header>
+        <header className="topbar"><div className="breadcrumb"><span className="breadcrumb-muted">Library</span><ChevronRight size={14} /><span>{activeCategory}</span></div><div className="topbar-actions"><span className="live-status"><span /> 실시간 동기화</span>{playlistSongs.length >= 2 && <button className="playlist-connect-button" onClick={startPlaylist} title="선택한 PPT 연결 재생"><Link2 size={15} /> PPT 연결 재생 <span>{playlistSongs.length}</span></button>}<button className={`admin-mode-button ${adminPassword ? "active" : ""}`} onClick={() => adminPassword ? setAdminPassword("") : openAdminGate()}><span className="admin-mode-icon">{adminPassword ? <ShieldCheck size={14} /> : <LockKeyhole size={14} />}</span>{adminPassword ? "관리자 모드 ON" : "관리자 모드"}</button><button className="top-icon-button" onClick={() => songsQuery.refetch()} aria-label="새로고침" title="새로고침"><RefreshCw size={18} /></button><button className={`top-icon-button ${settingsOpen ? "settings-active" : ""}`} onClick={() => setSettingsOpen((value) => !value)} aria-label="설정" title="설정"><Settings size={18} /></button></div></header>
+        {settingsOpen && <section className="settings-panel" role="dialog" aria-label="앱 설정" onClick={(event) => event.stopPropagation()}>
+          <div className="settings-panel-head"><div><span className="section-kicker">APP SETTINGS</span><h3>찬양창고 설정</h3><p>보기 편한 화면으로 맞춰 보세요.</p></div><button className="settings-close" onClick={() => setSettingsOpen(false)} aria-label="설정 닫기"><X size={16} /></button></div>
+          <div className="settings-group"><strong>화면 모드</strong><div className="settings-segment"><button className={appSettings.theme === "light" ? "selected" : ""} onClick={() => updateSettings("theme", "light")}>☼ 화이트</button><button className={appSettings.theme === "dark" ? "selected" : ""} onClick={() => updateSettings("theme", "dark")}>◐ 다크</button></div></div>
+          <div className="settings-group"><strong>바탕화면 색깔</strong><div className="background-swatches">{(["ivory", "mist", "sage", "lavender"] as const).map((color) => <button key={color} className={`color-swatch swatch-${color} ${appSettings.background === color ? "selected" : ""}`} onClick={() => updateSettings("background", color)} aria-label={`${color} 배경`}><span /></button>)}</div><div className="settings-choice-label">{({ ivory: "아이보리", mist: "안개 블루", sage: "세이지 그린", lavender: "라벤더" } as Record<AppSettings["background"], string>)[appSettings.background]}</div></div>
+          <div className="settings-group"><strong>글씨 크기</strong><div className="settings-segment"><button className={appSettings.fontScale === "small" ? "selected" : ""} onClick={() => updateSettings("fontScale", "small")}>작게</button><button className={appSettings.fontScale === "medium" ? "selected" : ""} onClick={() => updateSettings("fontScale", "medium")}>보통</button><button className={appSettings.fontScale === "large" ? "selected" : ""} onClick={() => updateSettings("fontScale", "large")}>크게</button></div></div>
+          <div className="settings-group"><strong>화면 여백</strong><div className="settings-segment"><button className={appSettings.uiScale === "compact" ? "selected" : ""} onClick={() => updateSettings("uiScale", "compact")}>촘촘하게</button><button className={appSettings.uiScale === "comfortable" ? "selected" : ""} onClick={() => updateSettings("uiScale", "comfortable")}>편안하게</button></div></div>
+          <button className="settings-reset" onClick={resetSettings}>기본 설정으로 돌아가기</button>
+        </section>}
         <div className="page-wrap">
           <section className="hero-row compact-hero"><div><div className="eyebrow"><span className="eyebrow-dot" /> LIVE PRAISE LIBRARY</div><h1>필요한 곡을 꺼내<br /><em>바로 시작해요.</em></h1><p className="hero-copy">곡을 추가하고 수정하면 이곳에 바로 업데이트됩니다.<br />예배에 필요한 악보를 한 곳에서 관리해 보세요.</p></div><div className="hero-note-art" aria-hidden="true"><span className="floating-note note-one">♪</span><span className="floating-note note-two">♫</span><span className="floating-note note-three">♩</span><div className="hero-staff-lines">{[0, 1, 2, 3, 4].map((line) => <span key={line} />)}</div><div className="hero-staff-notes">♩　♪　♫</div></div></section>
 
