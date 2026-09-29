@@ -33,12 +33,21 @@ const bulkFileInput = z.object({
   fileSize: z.number().int().nonnegative().max(50_000_000),
 });
 
+async function renderWithRetry(bytes: Buffer, fileName: string) {
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const rendered = await renderSlideImages(bytes, fileName);
+    if (rendered.length) return rendered;
+    if (attempt < 2) await new Promise((resolve) => setTimeout(resolve, 350 * (attempt + 1)));
+  }
+  return [];
+}
+
 async function saveFile(file: z.infer<NonNullable<typeof fileInput>>, renderSlides = true) {
   if (!file) return {};
   const safeName = file.fileName.replace(/[^a-zA-Z0-9._-]/g, "_");
   const bytes = Buffer.from(file.fileData, "base64");
   const stored = await storagePut(`praise-library/${crypto.randomUUID()}-${safeName}`, bytes, file.mimeType);
-  const slideImages = renderSlides ? await renderSlideImages(bytes, file.fileName) : [];
+  const slideImages = renderSlides ? await renderWithRetry(bytes, file.fileName) : [];
   return {
     fileName: file.fileName,
     fileKey: stored.key,
@@ -53,6 +62,16 @@ async function saveFile(file: z.infer<NonNullable<typeof fileInput>>, renderSlid
 function assertAdminPassword(password: string) {
   if (!isAdminPasswordValid(password)) {
     throw new TRPCError({ code: "FORBIDDEN", message: "관리자 비밀번호가 올바르지 않습니다." });
+  }
+}
+
+function hasRenderedSlides(value: string | null | undefined) {
+  if (!value) return false;
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) && parsed.length > 0 && parsed.every((item) => typeof item === "string" && item.length > 0);
+  } catch {
+    return false;
   }
 }
 
@@ -102,12 +121,12 @@ export const appRouter = router({
     prepareSlides: publicProcedure.input(z.object({ id: z.number().int().positive() })).mutation(async ({ input }) => {
       const current = await getSongById(input.id);
       if (!current) throw new TRPCError({ code: "NOT_FOUND", message: "곡을 찾을 수 없습니다." });
-      if (current.slideImages) return current;
+      if (hasRenderedSlides(current.slideImages)) return current;
       if (!current.fileKey) throw new TRPCError({ code: "BAD_REQUEST", message: "원본 PPT 파일이 연결되지 않았습니다." });
       const signedUrl = await storageGetSignedUrl(current.fileKey);
       const response = await fetch(signedUrl);
       if (!response.ok) throw new Error("원본 PPT를 불러오지 못했어요.");
-      const rendered = await renderSlideImages(Buffer.from(await response.arrayBuffer()), current.fileName ?? `${current.title}.pptx`);
+      const rendered = await renderWithRetry(Buffer.from(await response.arrayBuffer()), current.fileName ?? `${current.title}.pptx`);
       if (!rendered.length) throw new Error("PPT를 슬라이드 이미지로 변환하지 못했어요.");
       return updateSong(input.id, { slideImages: JSON.stringify(rendered), slideCount: rendered.length });
     }),
@@ -115,11 +134,11 @@ export const appRouter = router({
       const results = [];
       for (const id of input.ids) {
         const current = await getSongById(id);
-        if (!current || current.slideImages || !current.fileKey) continue;
+        if (!current || hasRenderedSlides(current.slideImages) || !current.fileKey) continue;
         const signedUrl = await storageGetSignedUrl(current.fileKey);
         const response = await fetch(signedUrl);
         if (!response.ok) continue;
-        const rendered = await renderSlideImages(Buffer.from(await response.arrayBuffer()), current.fileName ?? `${current.title}.pptx`);
+        const rendered = await renderWithRetry(Buffer.from(await response.arrayBuffer()), current.fileName ?? `${current.title}.pptx`);
         if (rendered.length) results.push(await updateSong(id, { slideImages: JSON.stringify(rendered), slideCount: rendered.length }));
       }
       return results;

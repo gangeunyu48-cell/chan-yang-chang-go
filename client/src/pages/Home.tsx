@@ -170,15 +170,15 @@ function PresentationMode({ song, playlist = [song], onClose, preparing = false 
   );
 }
 
-function ExtendedPresentationMode({ song, playlist = [song], outputWindow, onClose, preparing = false }: { song: Song; playlist?: Song[]; outputWindow: Window | null; onClose: () => void; preparing?: boolean }) {
+function ExtendedPresentationMode({ song, playlist = [song], outputWindow, onOpenOutput, onClose, preparing = false }: { song: Song; playlist?: Song[]; outputWindow: Window | null; onOpenOutput: () => void; onClose: () => void; preparing?: boolean }) {
   const [songIndex, setSongIndex] = useState(Math.max(0, playlist.findIndex((item) => item.id === song.id)));
   const [slide, setSlide] = useState(1);
   const currentSong = playlist[songIndex] ?? song;
   const slideImages = parseSlideImages(currentSong.slideImages);
   const totalSlides = slideImages.length || Math.max(1, currentSong.slideCount);
   const current = slideImages[slide - 1];
-  const previous = slideImages[slide - 2];
-  const next = slideImages[slide];
+  const previous = slideImages[slide - 2] ?? parseSlideImages(playlist[songIndex - 1]?.slideImages).at(-1);
+  const next = slideImages[slide] ?? parseSlideImages(playlist[songIndex + 1]?.slideImages)[0];
 
   const moveNext = () => {
     if (slide < totalSlides) setSlide((value) => value + 1);
@@ -220,7 +220,7 @@ function ExtendedPresentationMode({ song, playlist = [song], outputWindow, onClo
 
   return (
     <div className="extended-presenter" role="dialog" aria-modal="true" aria-label="확장 PPT 발표 화면">
-      <div className="extended-presenter-bar"><strong>확장 화면</strong><span>컴퓨터: 이전·현재·다음 PPT / 송출: 현재 PPT</span><button className="output-screen-button" onClick={() => outputWindow?.focus()}><MonitorPlay size={15} /> 송출 화면</button><button className="icon-button icon-button-dark" onClick={onClose} aria-label="확장 화면 닫기"><X size={20} /></button></div>
+      <div className="extended-presenter-bar"><strong>확장 화면</strong><span>컴퓨터: 이전·현재·다음 PPT / 송출: 현재 PPT</span><button className="output-screen-button" onClick={onOpenOutput}><MonitorPlay size={15} /> 송출 화면</button><button className="icon-button icon-button-dark" onClick={onClose} aria-label="확장 화면 닫기"><X size={20} /></button></div>
       <div className="extended-stage">
         <div className="extended-side extended-previous"><span>이전</span>{previous ? <img src={previous} alt="이전 슬라이드" /> : <div className="extended-empty" />}</div>
         <div className="extended-current">{preparing ? <div className="extended-loading"><LoaderCircle className="spin" size={28} /><span>PPT를 준비하는 중이에요</span></div> : current ? <img src={current} alt="현재 PPT 슬라이드" /> : null}<div className="extended-slide-count">{slide} / {totalSlides}</div></div>
@@ -347,6 +347,7 @@ export default function Home() {
   const [playlistSongs, setPlaylistSongs] = useState<Song[]>([]);
   const [extendedSong, setExtendedSong] = useState<Song | null>(null);
   const extendedWindowRef = useRef<Window | null>(null);
+  const [outputWindow, setOutputWindow] = useState<Window | null>(null);
   const [menuSongId, setMenuSongId] = useState<number | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [adminPassword, setAdminPassword] = useState("");
@@ -439,25 +440,29 @@ export default function Home() {
   };
 
   const openExtendedPresentation = (song: Song) => {
-    const popup = window.open("", "changgo-extended-output", "popup=yes,width=1280,height=720");
-    if (!popup) {
-      toast.error("송출 화면 창이 차단되었어요. 브라우저에서 팝업을 허용해 주세요.");
-      return;
-    }
-    extendedWindowRef.current = popup;
     setExtendedSong(song);
     if (parseSlideImages(song.slideImages).length === 0 && song.fileKey) {
       setPreparingSongId(song.id);
       prepareSlides.mutate({ id: song.id }, {
         onSuccess: (updated) => { setPlaylistSongs((current) => current.map((item) => item.id === updated.id ? updated : item)); setExtendedSong(updated); setPreparingSongId(null); },
-        onError: (error) => { setPreparingSongId(null); popup.close(); extendedWindowRef.current = null; setExtendedSong(null); toast.error(error.message || "PPT 슬라이드를 준비하지 못했어요."); },
+        onError: (error) => { setPreparingSongId(null); setExtendedSong(null); toast.error(error.message || "PPT 슬라이드를 준비하지 못했어요."); },
       });
     }
+  };
+
+  const openOutputWindow = () => {
+    if (outputWindow && !outputWindow.closed) { outputWindow.focus(); return; }
+    const popup = window.open("", "changgo-extended-output", "popup=yes,width=1280,height=720");
+    if (!popup) { toast.error("송출 화면 창이 차단되었어요. 브라우저에서 팝업을 허용해 주세요."); return; }
+    extendedWindowRef.current = popup;
+    setOutputWindow(popup);
+    popup.focus();
   };
 
   const closeExtendedPresentation = () => {
     if (extendedWindowRef.current && !extendedWindowRef.current.closed) extendedWindowRef.current.close();
     extendedWindowRef.current = null;
+    setOutputWindow(null);
     setExtendedSong(null);
     setPreparingSongId(null);
   };
@@ -590,7 +595,7 @@ export default function Home() {
       {bulkOpen && <BulkUploadModal onClose={() => setBulkOpen(false)} onSubmit={bulkUpload} saving={bulkSaving} progress={bulkProgress} />}
       {editor !== undefined && <SongEditor song={editor} onClose={() => setEditor(undefined)} onSubmit={saveSong} saving={createSong.isPending || updateSong.isPending} />}
       {playingSong && <PresentationMode song={playingSong} playlist={playlistSongs.length ? playlistSongs : [playingSong]} preparing={preparingSongId === playingSong.id} onClose={() => { setPlayingSong(null); setPreparingSongId(null); }} />}
-      {extendedSong && <ExtendedPresentationMode song={extendedSong} playlist={playlistSongs.length ? playlistSongs : [extendedSong]} outputWindow={extendedWindowRef.current} preparing={preparingSongId === extendedSong.id} onClose={closeExtendedPresentation} />}
+      {extendedSong && <ExtendedPresentationMode song={extendedSong} playlist={playlistSongs.length ? playlistSongs : [extendedSong]} outputWindow={outputWindow} onOpenOutput={openOutputWindow} preparing={preparingSongId === extendedSong.id} onClose={closeExtendedPresentation} />}
     </div>
   );
 }
