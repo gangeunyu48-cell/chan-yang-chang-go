@@ -23,6 +23,7 @@ import {
   Pencil,
   Play,
   Plus,
+  RefreshCw,
   Search,
   ShieldCheck,
   Trash2,
@@ -578,7 +579,7 @@ export default function Home() {
       </aside>
 
       <main className="main-content">
-        <header className="topbar"><div className="breadcrumb"><span className="breadcrumb-muted">Library</span><ChevronRight size={14} /><span>{activeCategory}</span></div><div className="topbar-actions"><span className={`live-status ${songsQuery.isFetching ? "syncing" : ""}`}><span /> {songsQuery.isFetching ? "동기화 중" : "실시간 동기화"}</span>{playlistSongs.length >= 2 && <button className="playlist-connect-button" onClick={startPlaylist} title="선택한 PPT 연결 재생"><Link2 size={15} /> PPT 연결 재생 <span>{playlistSongs.length}</span></button>}<button className={`admin-mode-button ${adminPassword ? "active" : ""}`} onClick={() => adminPassword ? setAdminPassword("") : openAdminGate()}><span className="admin-mode-icon">{adminPassword ? <ShieldCheck size={14} /> : <LockKeyhole size={14} />}</span>{adminPassword ? "관리자 모드 ON" : "관리자 모드"}</button><button className="top-icon-button" aria-label="도움말"><CircleHelp size={18} /></button><div className="avatar">윤</div></div></header>
+        <header className="topbar"><div className="breadcrumb"><span className="breadcrumb-muted">Library</span><ChevronRight size={14} /><span>{activeCategory}</span></div><div className="topbar-actions"><span className="live-status"><span /> 실시간 동기화</span>{playlistSongs.length >= 2 && <button className="playlist-connect-button" onClick={startPlaylist} title="선택한 PPT 연결 재생"><Link2 size={15} /> PPT 연결 재생 <span>{playlistSongs.length}</span></button>}<button className={`admin-mode-button ${adminPassword ? "active" : ""}`} onClick={() => adminPassword ? setAdminPassword("") : openAdminGate()}><span className="admin-mode-icon">{adminPassword ? <ShieldCheck size={14} /> : <LockKeyhole size={14} />}</span>{adminPassword ? "관리자 모드 ON" : "관리자 모드"}</button><button className="top-icon-button" onClick={() => songsQuery.refetch()} aria-label="새로고침" title="새로고침"><RefreshCw size={18} /></button></div></header>
         <div className="page-wrap">
           <section className="hero-row compact-hero"><div><div className="eyebrow"><span className="eyebrow-dot" /> LIVE PRAISE LIBRARY</div><h1>필요한 곡을 꺼내<br /><em>바로 시작해요.</em></h1><p className="hero-copy">곡을 추가하고 수정하면 이곳에 바로 업데이트됩니다.<br />예배에 필요한 악보를 한 곳에서 관리해 보세요.</p></div><div className="hero-note-art" aria-hidden="true"><span className="floating-note note-one">♪</span><span className="floating-note note-two">♫</span><span className="floating-note note-three">♩</span><div className="hero-staff-lines">{[0, 1, 2, 3, 4].map((line) => <span key={line} />)}</div><div className="hero-staff-notes">♩　♪　♫</div></div></section>
 

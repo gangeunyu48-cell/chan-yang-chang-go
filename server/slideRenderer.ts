@@ -24,7 +24,8 @@ export async function renderSlideImages(bytes: Buffer, fileName: string): Promis
     await writeFile(sourcePath, bytes);
     let pdfPath = sourcePath;
     if (extension === ".ppt" || extension === ".pptx") {
-      await execFileAsync("libreoffice", ["--headless", "--convert-to", "pdf", "--outdir", workDir, sourcePath], { timeout: 180_000 });
+      const profileDir = join(workDir, "libreoffice-profile");
+      await execFileAsync("libreoffice", [`-env:UserInstallation=file://${profileDir}`, "--headless", "--norestore", "--nolockcheck", "--nodefault", "--convert-to", "pdf", "--outdir", workDir, sourcePath], { timeout: 180_000 });
       pdfPath = join(workDir, `${stem}.pdf`);
     }
     if (extension !== ".pdf" && extension !== ".ppt" && extension !== ".pptx") return [];
