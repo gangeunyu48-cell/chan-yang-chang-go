@@ -37,7 +37,7 @@ import type { AppRouter } from "../../../server/routers";
 
 type Song = inferRouterOutputs<AppRouter>["songs"]["list"][number];
 type Category = "전체 악보" | "찬송가" | "CCM";
-type AppSettings = { theme: "light" | "dark"; background: "ivory" | "mist" | "sage" | "lavender"; fontScale: "small" | "medium" | "large"; uiScale: "compact" | "comfortable"; showPreview: boolean; slideFit: "cover" | "contain"; worshipStyle: "navy" | "black" };
+type AppSettings = { theme: "light" | "dark"; background: "ivory" | "mist" | "sage" | "lavender"; fontScale: "small" | "medium" | "large"; showPreview: boolean; slideFit: "cover" | "contain"; worshipStyle: "navy" | "black" };
 type FormState = { title: string; category: "찬송가" | "CCM"; hymnNumber: string; slideCount: string };
 
 type FilePayload = {
@@ -334,6 +334,15 @@ function SongEditor({
 
 export default function Home() {
   const songsQuery = trpc.songs.list.useQuery(undefined, { refetchInterval: 3000, refetchOnWindowFocus: true });
+  const [cachedSongs, setCachedSongs] = useState<Song[]>(() => {
+    try { return JSON.parse(localStorage.getItem("changgo-songs-cache") || "[]") as Song[]; } catch { return []; }
+  });
+  useEffect(() => {
+    if (songsQuery.data) {
+      setCachedSongs(songsQuery.data);
+      localStorage.setItem("changgo-songs-cache", JSON.stringify(songsQuery.data));
+    }
+  }, [songsQuery.data]);
   const utils = trpc.useUtils();
   const createSong = trpc.songs.create.useMutation({ onSuccess: async () => { await utils.songs.list.invalidate(); toast.success("곡을 추가했어요."); setEditor(undefined); }, onError: (error) => toast.error(error.message || "곡을 추가하지 못했어요.") });
   const bulkCreate = trpc.songs.bulkCreate.useMutation();
@@ -342,7 +351,7 @@ export default function Home() {
   const updateSong = trpc.songs.update.useMutation({ onSuccess: async () => { await utils.songs.list.invalidate(); toast.success("곡 정보를 업데이트했어요."); setEditor(undefined); }, onError: (error) => toast.error(error.message || "곡을 수정하지 못했어요.") });
   const removeSong = trpc.songs.remove.useMutation({ onSuccess: async () => { await utils.songs.list.invalidate(); toast.success("곡을 삭제했어요."); }, onError: (error) => toast.error(error.message || "곡을 삭제하지 못했어요.") });
 
-  const songs = songsQuery.data ?? [];
+  const songs = songsQuery.data ?? cachedSongs;
   const [activeCategory, setActiveCategory] = useState<Category>("전체 악보");
   const [searchQuery, setSearchQuery] = useState("");
   const [editor, setEditor] = useState<Song | null | undefined>(undefined);
@@ -364,8 +373,8 @@ export default function Home() {
   const [appSettings, setAppSettings] = useState<AppSettings>(() => {
     try {
       const saved = localStorage.getItem("changgo-settings");
-      return saved ? { theme: "light", background: "ivory", fontScale: "medium", uiScale: "comfortable", showPreview: true, slideFit: "cover", worshipStyle: "navy", ...JSON.parse(saved) } : { theme: "light", background: "ivory", fontScale: "medium", uiScale: "comfortable", showPreview: true, slideFit: "cover", worshipStyle: "navy" };
-    } catch { return { theme: "light", background: "ivory", fontScale: "medium", uiScale: "comfortable", showPreview: true, slideFit: "cover", worshipStyle: "navy" }; }
+      return saved ? { theme: "light", background: "ivory", fontScale: "medium", showPreview: true, slideFit: "cover", worshipStyle: "navy", ...JSON.parse(saved) } : { theme: "light", background: "ivory", fontScale: "medium", showPreview: true, slideFit: "cover", worshipStyle: "navy" };
+    } catch { return { theme: "light", background: "ivory", fontScale: "medium", showPreview: true, slideFit: "cover", worshipStyle: "navy" }; }
   });
 
   useEffect(() => {
@@ -373,7 +382,6 @@ export default function Home() {
     root.dataset.archiveTheme = appSettings.theme;
     root.dataset.archiveBackground = appSettings.background;
     root.dataset.archiveFont = appSettings.fontScale;
-    root.dataset.archiveDensity = appSettings.uiScale;
     root.dataset.archivePreview = appSettings.showPreview ? "show" : "hide";
     root.dataset.archiveFit = appSettings.slideFit;
     root.dataset.archiveWorship = appSettings.worshipStyle;
@@ -381,7 +389,7 @@ export default function Home() {
   }, [appSettings]);
 
   const updateSettings = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => setAppSettings((current) => ({ ...current, [key]: value }));
-  const resetSettings = () => setAppSettings({ theme: "light", background: "ivory", fontScale: "medium", uiScale: "comfortable", showPreview: true, slideFit: "cover", worshipStyle: "navy" });
+  const resetSettings = () => setAppSettings({ theme: "light", background: "ivory", fontScale: "medium", showPreview: true, slideFit: "cover", worshipStyle: "navy" });
 
   const filteredSongs = useMemo(() => songs.filter((song) => {
     const categoryMatch = activeCategory === "전체 악보" || song.category === activeCategory;
@@ -624,7 +632,6 @@ export default function Home() {
           <div className="settings-group"><strong>화면 모드</strong><div className="settings-segment"><button className={appSettings.theme === "light" ? "selected" : ""} onClick={() => updateSettings("theme", "light")}>☼ 화이트</button><button className={appSettings.theme === "dark" ? "selected" : ""} onClick={() => updateSettings("theme", "dark")}>◐ 다크</button></div></div>
           <div className="settings-group"><strong>바탕화면 색깔</strong><div className="background-swatches">{(["ivory", "mist", "sage", "lavender"] as const).map((color) => <button key={color} className={`color-swatch swatch-${color} ${appSettings.background === color ? "selected" : ""}`} onClick={() => updateSettings("background", color)} aria-label={`${color} 배경`}><span /></button>)}</div><div className="settings-choice-label">{({ ivory: "아이보리", mist: "안개 블루", sage: "세이지 그린", lavender: "라벤더" } as Record<AppSettings["background"], string>)[appSettings.background]}</div></div>
           <div className="settings-group"><strong>글씨 크기</strong><div className="settings-segment"><button className={appSettings.fontScale === "small" ? "selected" : ""} onClick={() => updateSettings("fontScale", "small")}>작게</button><button className={appSettings.fontScale === "medium" ? "selected" : ""} onClick={() => updateSettings("fontScale", "medium")}>보통</button><button className={appSettings.fontScale === "large" ? "selected" : ""} onClick={() => updateSettings("fontScale", "large")}>크게</button></div></div>
-          <div className="settings-group"><strong>화면 여백</strong><div className="settings-segment"><button className={appSettings.uiScale === "compact" ? "selected" : ""} onClick={() => updateSettings("uiScale", "compact")}>촘촘하게</button><button className={appSettings.uiScale === "comfortable" ? "selected" : ""} onClick={() => updateSettings("uiScale", "comfortable")}>편안하게</button></div></div>
           <div className="settings-group"><strong>곡 카드 미리보기</strong><div className="settings-segment"><button className={appSettings.showPreview ? "selected" : ""} onClick={() => updateSettings("showPreview", true)}>보이기</button><button className={!appSettings.showPreview ? "selected" : ""} onClick={() => updateSettings("showPreview", false)}>숨기기</button></div></div>
           <div className="settings-group"><strong>슬라이드 화면 맞춤</strong><div className="settings-segment"><button className={appSettings.slideFit === "cover" ? "selected" : ""} onClick={() => updateSettings("slideFit", "cover")}>화면 꽉 채우기</button><button className={appSettings.slideFit === "contain" ? "selected" : ""} onClick={() => updateSettings("slideFit", "contain")}>전체 보이기</button></div></div>
           <div className="settings-group"><strong>예배 송출 배경</strong><div className="settings-segment"><button className={appSettings.worshipStyle === "navy" ? "selected" : ""} onClick={() => updateSettings("worshipStyle", "navy")}>네이비</button><button className={appSettings.worshipStyle === "black" ? "selected" : ""} onClick={() => updateSettings("worshipStyle", "black")}>검정</button></div></div>
