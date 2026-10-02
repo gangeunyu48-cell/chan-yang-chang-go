@@ -160,10 +160,14 @@ function PresentationMode({ song, playlist = [song], onClose, preparing = false 
       if (event.key === "Escape") onClose();
       if (event.key === "ArrowRight" || event.key === " ") moveNext();
       if (event.key === "ArrowLeft") movePrevious();
+      if (/^[1-9]$/.test(event.key)) {
+        const requestedSlide = Number(event.key);
+        if (requestedSlide <= totalSlides) setSlide(requestedSlide);
+      }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
+  });
 
   useEffect(() => {
     slideImages.forEach((src) => { const preload = new Image(); preload.decoding = "async"; preload.src = src; });
@@ -220,6 +224,10 @@ function ExtendedPresentationMode({ song, playlist = [song], outputWindow, onOpe
       if (event.key === "Escape") onClose();
       if (event.key === "ArrowRight" || event.key === " ") moveNext();
       if (event.key === "ArrowLeft") movePrevious();
+      if (/^[1-9]$/.test(event.key)) {
+        const requestedSlide = Number(event.key);
+        if (requestedSlide <= totalSlides) setSlide(requestedSlide);
+      }
       if (event.key === "Enter" && outputWindow && !outputWindow.closed) outputWindow.document.documentElement.requestFullscreen?.().catch(() => outputWindow.focus());
     };
     window.addEventListener("keydown", onKeyDown);
