@@ -1,4 +1,5 @@
 import { ChangeEvent, DragEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { inferRouterOutputs } from "@trpc/server";
 import {
   ArrowDownToLine,
@@ -679,8 +680,8 @@ export default function Home() {
       {adminGateOpen && <AdminGate onClose={() => setAdminGateOpen(false)} onUnlock={unlockAdmin} />}
       {bulkOpen && <BulkUploadModal onClose={() => setBulkOpen(false)} onSubmit={bulkUpload} saving={bulkSaving} progress={bulkProgress} />}
       {editor !== undefined && <SongEditor song={editor} onClose={() => setEditor(undefined)} onSubmit={saveSong} saving={createSong.isPending || updateSong.isPending} />}
-      {playingSong && <PresentationMode song={playingSong} playlist={playlistSongs.length ? playlistSongs : [playingSong]} preparing={preparingSongId === playingSong.id} onClose={() => { setPlayingSong(null); setPreparingSongId(null); if (document.fullscreenElement) document.exitFullscreen?.().catch(() => undefined); }} />}
-      {extendedSong && <ExtendedPresentationMode song={extendedSong} playlist={playlistSongs.length ? playlistSongs : [extendedSong]} outputWindow={outputWindow} onOpenOutput={openOutputWindow} preparing={preparingSongId === extendedSong.id} onClose={closeExtendedPresentation} />}
+      {playingSong && createPortal(<PresentationMode song={playingSong} playlist={playlistSongs.length ? playlistSongs : [playingSong]} preparing={preparingSongId === playingSong.id} onClose={() => { setPlayingSong(null); setPreparingSongId(null); if (document.fullscreenElement) document.exitFullscreen?.().catch(() => undefined); }} />, document.body)}
+      {extendedSong && createPortal(<ExtendedPresentationMode song={extendedSong} playlist={playlistSongs.length ? playlistSongs : [extendedSong]} outputWindow={outputWindow} onOpenOutput={openOutputWindow} preparing={preparingSongId === extendedSong.id} onClose={closeExtendedPresentation} />, document.body)}
     </div>
   );
 }
