@@ -595,15 +595,25 @@ export default function Home() {
     }
   };
 
-  const downloadSong = (song: Song) => {
+  const downloadSong = async (song: Song) => {
     if (!song.fileUrl) {
       toast.info("이 곡은 아직 PPT 원본이 연결되지 않았어요. 곡 수정에서 파일을 올려 주세요.");
       return;
     }
-    const anchor = document.createElement("a");
-    anchor.href = song.fileUrl;
-    anchor.download = getDownloadFileName(song);
-    anchor.click();
+    try {
+      const response = await fetch(song.fileUrl);
+      if (!response.ok) throw new Error("파일을 불러오지 못했어요.");
+      const blobUrl = URL.createObjectURL(await response.blob());
+      const anchor = document.createElement("a");
+      anchor.href = blobUrl;
+      anchor.download = getDownloadFileName(song);
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "다운로드에 실패했어요.");
+    }
   };
 
   const dropFile = (event: DragEvent<HTMLDivElement>) => {

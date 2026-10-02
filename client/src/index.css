@@ -340,3 +340,5 @@ html[data-archive-theme="dark"] .archive-shell{color:#e9edf0;background:#182129}
 html[data-archive-preview="hide"] .song-preview{display:none}html[data-archive-preview="hide"] .song-main{width:100%}html[data-archive-fit="contain"] .ppt-only-image{object-fit:contain!important;background:#101820}html[data-archive-fit="contain"] .extended-current>img{object-fit:contain!important;background:#0b1015}html[data-archive-worship="black"] .extended-presenter{background:#050608}html[data-archive-worship="black"] .extended-presenter-bar,html[data-archive-worship="black"] .extended-help{background:#090b0e}
 
 @media (max-width:560px){.song-actions{width:100%;margin-left:0;justify-content:flex-end}.song-bottom{row-gap:8px}}
+/* Slideshow playback always fills the output canvas, regardless of the library preview setting. */
+html[data-archive-fit="contain"] .ppt-only-mode .ppt-only-image{object-fit:cover!important}
