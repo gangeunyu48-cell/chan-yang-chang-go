@@ -131,6 +131,12 @@ function parseSlideImages(value: string | null | undefined): string[] {
   }
 }
 
+function getDownloadFileName(song: Song) {
+  const extension = song.fileName?.match(/\.([a-z0-9]+)$/i)?.[1] ?? "pptx";
+  if (song.category === "찬송가" && song.hymnNumber) return `찬송가 ${song.hymnNumber}장.${extension}`;
+  return `${song.title || "찬양"}.${extension}`;
+}
+
 function PresentationMode({ song, playlist = [song], onClose, preparing = false }: { song: Song; playlist?: Song[]; onClose: () => void; preparing?: boolean }) {
   const [slide, setSlide] = useState(1);
   const [songIndex, setSongIndex] = useState(Math.max(0, playlist.findIndex((item) => item.id === song.id)));
@@ -157,7 +163,7 @@ function PresentationMode({ song, playlist = [song], onClose, preparing = false 
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  });
+  }, []);
 
   useEffect(() => {
     slideImages.forEach((src) => { const preload = new Image(); preload.decoding = "async"; preload.src = src; });
@@ -435,6 +441,9 @@ export default function Home() {
   };
 
   const openPresentation = (song: Song) => {
+    // Request fullscreen during the button's user-activation window. Calling
+    // this only from PresentationMode's effect is rejected by most browsers.
+    document.documentElement.requestFullscreen?.().catch(() => undefined);
     if (parseSlideImages(song.slideImages).length === 0 && song.fileKey) {
       setPreparingSongId(song.id);
       prepareSlides.mutate({ id: song.id }, {
@@ -585,7 +594,7 @@ export default function Home() {
     }
     const anchor = document.createElement("a");
     anchor.href = song.fileUrl;
-    anchor.download = song.fileName ?? `${song.title}.pptx`;
+    anchor.download = getDownloadFileName(song);
     anchor.click();
   };
 
@@ -652,7 +661,7 @@ export default function Home() {
       {adminGateOpen && <AdminGate onClose={() => setAdminGateOpen(false)} onUnlock={unlockAdmin} />}
       {bulkOpen && <BulkUploadModal onClose={() => setBulkOpen(false)} onSubmit={bulkUpload} saving={bulkSaving} progress={bulkProgress} />}
       {editor !== undefined && <SongEditor song={editor} onClose={() => setEditor(undefined)} onSubmit={saveSong} saving={createSong.isPending || updateSong.isPending} />}
-      {playingSong && <PresentationMode song={playingSong} playlist={playlistSongs.length ? playlistSongs : [playingSong]} preparing={preparingSongId === playingSong.id} onClose={() => { setPlayingSong(null); setPreparingSongId(null); }} />}
+      {playingSong && <PresentationMode song={playingSong} playlist={playlistSongs.length ? playlistSongs : [playingSong]} preparing={preparingSongId === playingSong.id} onClose={() => { setPlayingSong(null); setPreparingSongId(null); if (document.fullscreenElement) document.exitFullscreen?.().catch(() => undefined); }} />}
       {extendedSong && <ExtendedPresentationMode song={extendedSong} playlist={playlistSongs.length ? playlistSongs : [extendedSong]} outputWindow={outputWindow} onOpenOutput={openOutputWindow} preparing={preparingSongId === extendedSong.id} onClose={closeExtendedPresentation} />}
     </div>
   );
