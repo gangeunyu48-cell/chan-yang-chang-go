@@ -188,7 +188,7 @@ function PresentationMode({ song, playlist = [song], onClose, preparing = false 
 function ExtendedPresentationMode({ song, playlist = [song], outputWindow, onOpenOutput, onClose, preparing = false }: { song: Song; playlist?: Song[]; outputWindow: Window | null; onOpenOutput: () => void; onClose: () => void; preparing?: boolean }) {
   const [songIndex, setSongIndex] = useState(Math.max(0, playlist.findIndex((item) => item.id === song.id)));
   const [slide, setSlide] = useState(1);
-  const presenterRef = useRef<HTMLDivElement>(null);
+  const [showSlideOverview, setShowSlideOverview] = useState(false);
   const currentSong = playlist[songIndex] ?? song;
   const slideImages = parseSlideImages(currentSong.slideImages);
   const totalSlides = slideImages.length || Math.max(1, currentSong.slideCount);
@@ -203,14 +203,6 @@ function ExtendedPresentationMode({ song, playlist = [song], outputWindow, onOpe
   const movePrevious = () => {
     if (slide > 1) setSlide((value) => value - 1);
     else if (songIndex > 0) { setSongIndex((value) => value - 1); setSlide(1); }
-  };
-
-  const togglePresenterFullscreen = () => {
-    if (document.fullscreenElement) {
-      document.exitFullscreen?.().catch(() => undefined);
-      return;
-    }
-    presenterRef.current?.requestFullscreen?.().catch(() => undefined);
   };
 
   useEffect(() => {
@@ -232,7 +224,10 @@ function ExtendedPresentationMode({ song, playlist = [song], outputWindow, onOpe
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") onClose();
+      if (event.key === "Escape") {
+        if (showSlideOverview) setShowSlideOverview(false);
+        else onClose();
+      }
       if (event.key === "ArrowRight" || event.key === " ") moveNext();
       if (event.key === "ArrowLeft") movePrevious();
       if (/^[1-9]$/.test(event.key)) {
@@ -247,14 +242,14 @@ function ExtendedPresentationMode({ song, playlist = [song], outputWindow, onOpe
   });
 
   return (
-    <div ref={presenterRef} className="extended-presenter" role="dialog" aria-modal="true" aria-label="확장 PPT 발표 화면">
-      <div className="extended-presenter-bar"><strong>확장 화면</strong><span>컴퓨터: 이전·현재·다음 PPT / 송출: 현재 PPT</span><div className="extended-presenter-actions"><button className="output-screen-button" onClick={onOpenOutput}><MonitorPlay size={15} /> 송출 화면</button><button className="output-screen-button" onClick={togglePresenterFullscreen} aria-label="확장 화면 전체화면"><Maximize2 size={15} /> 전체 화면</button><button className="icon-button icon-button-dark" onClick={onClose} aria-label="확장 화면 닫기"><X size={20} /></button></div></div>
-      {playlist.length > 1 && <div className="extended-playlist" aria-label="재생목록 PPT 선택">{playlist.map((item, index) => <button key={item.id} className={index === songIndex ? "active" : ""} onClick={() => { setSongIndex(index); setSlide(1); }}><span>{index + 1}</span>{item.category === "찬송가" && item.hymnNumber ? `찬송가 ${item.hymnNumber}장` : item.title}</button>)}</div>}
-      <div className="extended-stage">
+    <div className="extended-presenter" role="dialog" aria-modal="true" aria-label="확장 PPT 발표 화면">
+      <div className="extended-presenter-bar"><strong>확장 화면</strong><span>컴퓨터: 이전·현재·다음 PPT / 송출: 현재 PPT</span><div className="extended-presenter-actions"><button className="output-screen-button" onClick={onOpenOutput}><MonitorPlay size={15} /> 송출 화면</button><button className={`output-screen-button ${showSlideOverview ? "overview-active" : ""}`} onClick={() => setShowSlideOverview((value) => !value)} aria-label="현재 PPT 전체 슬라이드 보기" title="현재 PPT의 모든 슬라이드 보기"><Maximize2 size={15} /> 전체 PPT</button><button className="icon-button icon-button-dark" onClick={onClose} aria-label="확장 화면 닫기"><X size={20} /></button></div></div>
+      {playlist.length > 1 && <div className="extended-playlist" aria-label="재생목록 PPT 선택">{playlist.map((item, index) => <button key={item.id} className={index === songIndex ? "active" : ""} onClick={() => { setSongIndex(index); setSlide(1); setShowSlideOverview(false); }}><span>{index + 1}</span>{item.category === "찬송가" && item.hymnNumber ? `찬송가 ${item.hymnNumber}장` : item.title}</button>)}</div>}
+      {showSlideOverview ? <div className="extended-slide-overview" aria-label={`${currentSong.title} 전체 슬라이드`}><div className="extended-overview-heading"><strong>{currentSong.title}</strong><span>슬라이드를 눌러 현재 화면으로 이동하세요 · 총 {totalSlides}장</span></div><div className="extended-slide-grid">{slideImages.map((src, index) => <button key={`${currentSong.id}-${index}`} className={index + 1 === slide ? "selected" : ""} onClick={() => { setSlide(index + 1); setShowSlideOverview(false); }}><img src={src} alt={`${index + 1}번 슬라이드`} /><span>{index + 1}</span></button>)}</div></div> : <div className="extended-stage">
         <div className="extended-side extended-previous"><span>이전</span>{previous ? <img src={previous} alt="이전 슬라이드" /> : <div className="extended-empty" />}</div>
         <div className="extended-current">{preparing ? <div className="extended-loading"><LoaderCircle className="spin" size={28} /><span>PPT를 준비하는 중이에요</span></div> : current ? <img src={current} alt="현재 PPT 슬라이드" /> : null}<div className="extended-slide-count">{slide} / {totalSlides}</div></div>
         <div className="extended-side extended-next"><span>다음</span>{next ? <img src={next} alt="다음 슬라이드" /> : <div className="extended-empty" />}</div>
-      </div>
+      </div>}
       <div className="extended-help">← → 슬라이드 이동 · Enter 송출 화면에서 PPT만 전체화면 · Esc 닫기</div>
     </div>
   );
