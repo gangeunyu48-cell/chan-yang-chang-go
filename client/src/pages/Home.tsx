@@ -428,8 +428,14 @@ export default function Home() {
   const [appSettings, setAppSettings] = useState<AppSettings>(() => {
     try {
       const saved = localStorage.getItem("changgo-settings");
-      return saved ? { theme: "light", background: "ivory", fontScale: "medium", showPreview: true, ...JSON.parse(saved) } : { theme: "light", background: "ivory", fontScale: "medium", showPreview: true };
-    } catch { return { theme: "light", background: "ivory", fontScale: "medium", showPreview: true }; }
+      const defaults: AppSettings = { theme: "dark", background: "ivory", fontScale: "medium", showPreview: true };
+      const savedSettings = saved ? { ...defaults, ...JSON.parse(saved) } : defaults;
+      if (localStorage.getItem("changgo-theme-default-v2") !== "1") {
+        localStorage.setItem("changgo-theme-default-v2", "1");
+        return { ...savedSettings, theme: "dark" };
+      }
+      return savedSettings;
+    } catch { return { theme: "dark", background: "ivory", fontScale: "medium", showPreview: true }; }
   });
 
   useEffect(() => {
@@ -438,11 +444,12 @@ export default function Home() {
     root.dataset.archiveBackground = appSettings.background;
     root.dataset.archiveFont = appSettings.fontScale;
     root.dataset.archivePreview = appSettings.showPreview ? "show" : "hide";
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", appSettings.theme === "dark" ? "#0b141d" : "#f8f6f1");
     localStorage.setItem("changgo-settings", JSON.stringify(appSettings));
   }, [appSettings]);
 
   const updateSettings = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => setAppSettings((current) => ({ ...current, [key]: value }));
-  const resetSettings = () => setAppSettings({ theme: "light", background: "ivory", fontScale: "medium", showPreview: true });
+  const resetSettings = () => setAppSettings({ theme: "dark", background: "ivory", fontScale: "medium", showPreview: true });
 
   const orderedSongs = useMemo(() => [...songs].sort((a, b) => {
     if (activeCategory === "전체 악보") {
@@ -728,7 +735,7 @@ export default function Home() {
         <header className="topbar"><div className="breadcrumb"><span className="breadcrumb-muted">Library</span><ChevronRight size={14} /><span>{activeCategory}</span></div><div className="topbar-actions"><span className="live-status"><span /> 실시간 동기화</span>{playlistSongs.length >= 2 && <button className="playlist-connect-button" onClick={startPlaylist} title="선택한 PPT 연결 재생"><Link2 size={15} /> PPT 연결 재생 <span>{playlistSongs.length}</span></button>}<button className={`admin-mode-button ${adminPassword ? "active" : ""}`} onClick={() => adminPassword ? setAdminPassword("") : openAdminGate()}><span className="admin-mode-icon">{adminPassword ? <ShieldCheck size={14} /> : <LockKeyhole size={14} />}</span>{adminPassword ? "관리자 모드 ON" : "관리자 모드"}</button><button className="top-icon-button" onClick={() => songsQuery.refetch()} aria-label="새로고침" title="새로고침"><RefreshCw size={18} /></button><button className={`top-icon-button ${settingsOpen ? "settings-active" : ""}`} onClick={() => setSettingsOpen((value) => !value)} aria-label="설정" title="설정"><Settings size={18} /></button></div></header>
         {settingsOpen && <section className="settings-panel" role="dialog" aria-label="앱 설정" onClick={(event) => event.stopPropagation()}>
           <div className="settings-panel-head"><div><span className="section-kicker">APP SETTINGS</span><h3>찬양창고 설정</h3><p>보기 편한 화면으로 맞춰 보세요.</p></div><button className="settings-close" onClick={() => setSettingsOpen(false)} aria-label="설정 닫기"><X size={16} /></button></div>
-          <div className="settings-group"><strong>화면 모드</strong><div className="settings-segment"><button className={appSettings.theme === "light" ? "selected" : ""} onClick={() => updateSettings("theme", "light")}>☼ 화이트</button><button className={appSettings.theme === "dark" ? "selected" : ""} onClick={() => updateSettings("theme", "dark")}>◐ 다크</button></div></div>
+          <div className="settings-group"><strong>화면 모드</strong><div className="settings-segment"><button className={appSettings.theme === "light" ? "selected" : ""} onClick={() => updateSettings("theme", "light")}>☼ 화이트</button><button className={appSettings.theme === "dark" ? "selected" : ""} onClick={() => updateSettings("theme", "dark")}>● 블랙</button></div></div>
           <div className="settings-group"><strong>바탕화면 색깔</strong><div className="background-swatches">{(["ivory", "mist", "sage", "lavender"] as const).map((color) => <button key={color} className={`color-swatch swatch-${color} ${appSettings.background === color ? "selected" : ""}`} onClick={() => updateSettings("background", color)} aria-label={`${color} 배경`}><span /></button>)}</div><div className="settings-choice-label">{({ ivory: "아이보리", mist: "안개 블루", sage: "세이지 그린", lavender: "라벤더" } as Record<AppSettings["background"], string>)[appSettings.background]}</div></div>
           <div className="settings-group"><strong>글씨 크기</strong><div className="settings-segment"><button className={appSettings.fontScale === "small" ? "selected" : ""} onClick={() => updateSettings("fontScale", "small")}>작게</button><button className={appSettings.fontScale === "medium" ? "selected" : ""} onClick={() => updateSettings("fontScale", "medium")}>보통</button><button className={appSettings.fontScale === "large" ? "selected" : ""} onClick={() => updateSettings("fontScale", "large")}>크게</button></div></div>
           <div className="settings-group"><strong>곡 카드 미리보기</strong><div className="settings-segment"><button className={appSettings.showPreview ? "selected" : ""} onClick={() => updateSettings("showPreview", true)}>보이기</button><button className={!appSettings.showPreview ? "selected" : ""} onClick={() => updateSettings("showPreview", false)}>숨기기</button></div></div>
