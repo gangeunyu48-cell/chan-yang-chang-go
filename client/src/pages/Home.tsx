@@ -255,15 +255,21 @@ function ExtendedPresentationMode({ song, playlist = [song], outputWindow, onOpe
   );
 }
 
-function AdminGate({ onClose, onUnlock }: { onClose: () => void; onUnlock: (password: string) => void }) {
+function AdminGate({ onClose, onUnlock }: { onClose: () => void; onUnlock: (password: string) => Promise<void> }) {
   const [password, setPassword] = useState("");
-  const submit = (event: FormEvent) => {
+  const [checking, setChecking] = useState(false);
+  const submit = async (event: FormEvent) => {
     event.preventDefault();
     if (!password) {
       toast.error("관리자 비밀번호를 입력해 주세요.");
       return;
     }
-    onUnlock(password);
+    setChecking(true);
+    try {
+      await onUnlock(password);
+    } finally {
+      setChecking(false);
+    }
   };
 
   return (
@@ -273,7 +279,7 @@ function AdminGate({ onClose, onUnlock }: { onClose: () => void; onUnlock: (pass
         <div className="admin-lock-visual"><ShieldCheck size={26} /><span>관리자만 곡을 추가하거나 수정할 수 있어요.</span></div>
         <label className="admin-password-label">관리자 비밀번호<input autoFocus type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="비밀번호 입력" /></label>
         <div className="editor-note"><LockKeyhole size={15} /> 비밀번호는 이 화면에서만 잠시 사용되며 저장하지 않습니다.</div>
-        <div className="modal-actions"><button type="button" className="cancel-button" onClick={onClose}>취소</button><button type="submit" className="save-button"><ShieldCheck size={16} /> 관리자 모드 시작</button></div>
+        <div className="modal-actions"><button type="button" className="cancel-button" onClick={onClose} disabled={checking}>취소</button><button type="submit" className="save-button" disabled={checking}>{checking ? <><LoaderCircle size={16} className="spin" /> 확인 중</> : <><ShieldCheck size={16} /> 관리자 모드 시작</>}</button></div>
       </form>
     </div>
   );
@@ -428,7 +434,17 @@ export default function Home() {
   const categoryCount = (category: Category) => category === "전체 악보" ? songs.length : songs.filter((song) => song.category === category).length;
 
   const openAdminGate = () => setAdminGateOpen(true);
-  const unlockAdmin = (password: string) => {
+  const unlockAdmin = async (password: string) => {
+    try {
+      const result = await utils.admin.verify.fetch({ password });
+      if (!result.valid) {
+        toast.error("관리자 비밀번호가 올바르지 않습니다.");
+        return;
+      }
+    } catch {
+      toast.error("비밀번호 확인에 실패했습니다. 다시 시도해 주세요.");
+      return;
+    }
     setAdminPassword(password);
     setAdminGateOpen(false);
     toast.success("관리자 모드가 시작됐어요.");

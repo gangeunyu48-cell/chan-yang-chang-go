@@ -10,8 +10,8 @@ const caller = appRouter.createCaller({
 });
 
 describe("admin password guard", () => {
-  it("accepts the configured server-side admin password", () => {
-    expect(isAdminPasswordValid("Qwer3342**")).toBe(true);
+  it("accepts the fixed server-side admin password", () => {
+    expect(isAdminPasswordValid("123456789")).toBe(true);
   });
 
   it("rejects incorrect passwords", () => {
@@ -19,7 +19,7 @@ describe("admin password guard", () => {
   });
 
   it("verifies the supplied secret through the lightweight API", async () => {
-    await expect(caller.admin.verify({ password: "Qwer3342**" })).resolves.toEqual({ valid: true });
+    await expect(caller.admin.verify({ password: "123456789" })).resolves.toEqual({ valid: true });
     await expect(caller.admin.verify({ password: "wrong-password" })).resolves.toEqual({ valid: false });
   });
 });
