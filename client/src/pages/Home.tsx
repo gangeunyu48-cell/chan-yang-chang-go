@@ -143,6 +143,8 @@ function PresentationMode({ song, playlist = [song], onClose, preparing = false 
   const [slide, setSlide] = useState(1);
   const [songIndex, setSongIndex] = useState(Math.max(0, playlist.findIndex((item) => item.id === song.id)));
   const stageRef = useRef<HTMLDivElement>(null);
+  const slideNumberBuffer = useRef("");
+  const slideNumberTimer = useRef<number | null>(null);
   const currentSong = playlist[songIndex] ?? song;
   const slideImages = parseSlideImages(currentSong.slideImages);
   const totalSlides = slideImages.length || Math.max(1, currentSong.slideCount);
@@ -162,13 +164,21 @@ function PresentationMode({ song, playlist = [song], onClose, preparing = false 
       if (event.key === "Escape") onClose();
       if (event.key === "ArrowRight" || event.key === " ") moveNext();
       if (event.key === "ArrowLeft") movePrevious();
-      if (/^[1-9]$/.test(event.key)) {
-        const requestedSlide = Number(event.key);
-        if (requestedSlide <= totalSlides) setSlide(requestedSlide);
+      if (/^\d$/.test(event.key)) {
+        slideNumberBuffer.current = `${slideNumberBuffer.current}${event.key}`.replace(/^0+(?=\d)/, "");
+        if (slideNumberTimer.current) window.clearTimeout(slideNumberTimer.current);
+        slideNumberTimer.current = window.setTimeout(() => {
+          const requestedSlide = Number(slideNumberBuffer.current);
+          if (requestedSlide >= 1 && requestedSlide <= totalSlides) setSlide(requestedSlide);
+          slideNumberBuffer.current = "";
+        }, 450);
       }
     };
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      if (slideNumberTimer.current) window.clearTimeout(slideNumberTimer.current);
+    };
   });
 
   useEffect(() => {
@@ -188,6 +198,8 @@ function PresentationMode({ song, playlist = [song], onClose, preparing = false 
 function ExtendedPresentationMode({ song, playlist = [song], outputWindow, onOpenOutput, onClose, preparing = false }: { song: Song; playlist?: Song[]; outputWindow: Window | null; onOpenOutput: () => void; onClose: () => void; preparing?: boolean }) {
   const [songIndex, setSongIndex] = useState(Math.max(0, playlist.findIndex((item) => item.id === song.id)));
   const [slide, setSlide] = useState(1);
+  const slideNumberBuffer = useRef("");
+  const slideNumberTimer = useRef<number | null>(null);
   const [showSlideOverview, setShowSlideOverview] = useState(false);
   const currentSong = playlist[songIndex] ?? song;
   const slideImages = parseSlideImages(currentSong.slideImages);
@@ -230,15 +242,24 @@ function ExtendedPresentationMode({ song, playlist = [song], outputWindow, onOpe
       }
       if (event.key === "ArrowRight" || event.key === " ") moveNext();
       if (event.key === "ArrowLeft") movePrevious();
-      if (/^[1-9]$/.test(event.key)) {
-        const requestedSlide = Number(event.key);
-        if (requestedSlide <= totalSlides) setSlide(requestedSlide);
+      if (/^\d$/.test(event.key)) {
+        slideNumberBuffer.current = `${slideNumberBuffer.current}${event.key}`.replace(/^0+(?=\d)/, "");
+        if (slideNumberTimer.current) window.clearTimeout(slideNumberTimer.current);
+        slideNumberTimer.current = window.setTimeout(() => {
+          const requestedSlide = Number(slideNumberBuffer.current);
+          if (requestedSlide >= 1 && requestedSlide <= totalSlides) setSlide(requestedSlide);
+          slideNumberBuffer.current = "";
+        }, 450);
       }
       if (event.key === "Enter" && outputWindow && !outputWindow.closed) outputWindow.document.documentElement.requestFullscreen?.().catch(() => outputWindow.focus());
     };
     window.addEventListener("keydown", onKeyDown);
     outputWindow?.addEventListener("keydown", onKeyDown);
-    return () => { window.removeEventListener("keydown", onKeyDown); outputWindow?.removeEventListener("keydown", onKeyDown); };
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      outputWindow?.removeEventListener("keydown", onKeyDown);
+      if (slideNumberTimer.current) window.clearTimeout(slideNumberTimer.current);
+    };
   });
 
   return (
