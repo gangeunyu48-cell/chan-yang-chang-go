@@ -8,7 +8,6 @@ import {
   BookOpen,
   Check,
   ChevronRight,
-  CircleHelp,
   FileMusic,
   FileUp,
   FolderOpen,
@@ -137,6 +136,12 @@ function getDownloadFileName(song: Song) {
   const extension = song.fileName?.match(/\.([a-z0-9]+)$/i)?.[1] ?? "pptx";
   if (song.category === "찬송가" && song.hymnNumber) return `찬송가 ${song.hymnNumber}장.${extension}`;
   return `${song.title || "찬양"}.${extension}`;
+}
+function getHymnSortNumber(song: Song) {
+  if (song.hymnNumber && song.hymnNumber >= 1 && song.hymnNumber <= 645) return song.hymnNumber;
+  const match = `${song.title} ${song.fileName ?? ""}`.match(/(?:^|[^0-9])(\d{1,3})(?:\s*장)?/);
+  const number = match ? Number(match[1]) : Number.POSITIVE_INFINITY;
+  return number >= 1 && number <= 645 ? number : Number.POSITIVE_INFINITY;
 }
 
 function PresentationMode({ song, playlist = [song], onClose, preparing = false }: { song: Song; playlist?: Song[]; onClose: () => void; preparing?: boolean }) {
@@ -439,7 +444,23 @@ export default function Home() {
   const updateSettings = <K extends keyof AppSettings>(key: K, value: AppSettings[K]) => setAppSettings((current) => ({ ...current, [key]: value }));
   const resetSettings = () => setAppSettings({ theme: "light", background: "ivory", fontScale: "medium", showPreview: true });
 
-  const songSearchIndex = useMemo(() => songs.map((song) => ({ song, text: `${song.title} ${song.category} ${song.hymnNumber ?? ""} ${song.fileName ?? ""}`.toLocaleLowerCase("ko-KR") })), [songs]);
+  const orderedSongs = useMemo(() => [...songs].sort((a, b) => {
+    if (activeCategory === "전체 악보") {
+      const aHymn = a.category === "찬송가";
+      const bHymn = b.category === "찬송가";
+      if (aHymn !== bHymn) return aHymn ? -1 : 1;
+      if (aHymn && bHymn) {
+        const numberDiff = getHymnSortNumber(a) - getHymnSortNumber(b);
+        if (numberDiff) return numberDiff;
+      }
+    }
+    if (activeCategory === "찬송가") {
+      const numberDiff = getHymnSortNumber(a) - getHymnSortNumber(b);
+      if (numberDiff) return numberDiff;
+    }
+    return a.title.localeCompare(b.title, "ko-KR", { numeric: true, sensitivity: "base" });
+  }), [activeCategory, songs]);
+  const songSearchIndex = useMemo(() => orderedSongs.map((song) => ({ song, text: `${song.title} ${song.category} ${song.hymnNumber ?? ""} ${song.fileName ?? ""}`.toLocaleLowerCase("ko-KR") })), [orderedSongs]);
   const filteredSongs = useMemo(() => songSearchIndex.filter(({ song, text }) => {
     const categoryMatch = activeCategory === "전체 악보" || song.category === activeCategory;
     const searchMatch = text.includes(deferredSearchQuery.trim().toLocaleLowerCase("ko-KR"));
@@ -700,7 +721,7 @@ export default function Home() {
         </nav>
         <div className="sidebar-spacer" />
         <div className="sidebar-note"><Music2 size={17} /><div><strong>실시간 찬양창고</strong><p>곡을 추가하거나 수정하면<br />모든 화면에 바로 반영돼요.</p></div></div>
-        <div className="sidebar-footer"><button className="sidebar-footer-link"><CircleHelp size={16} /> 사용 방법</button><span className="version">v 0.2 · live</span></div>
+        <div className="sidebar-footer"><span className="version">v 0.2 · live</span></div>
       </aside>
 
       <main className="main-content">
