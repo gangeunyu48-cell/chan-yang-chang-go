@@ -200,7 +200,7 @@ function PresentationMode({ song, playlist = [song], onClose, preparing = false 
   );
 }
 
-function ExtendedPresentationMode({ song, playlist = [song], outputWindow, onOpenOutput, onClose, preparing = false }: { song: Song; playlist?: Song[]; outputWindow: Window | null; onOpenOutput: () => void; onClose: () => void; preparing?: boolean }) {
+function ExtendedPresentationMode({ song, playlist = [song], outputWindow, onOpenOutput, onOutputClosed, onClose, preparing = false }: { song: Song; playlist?: Song[]; outputWindow: Window | null; onOpenOutput: () => void; onOutputClosed: () => void; onClose: () => void; preparing?: boolean }) {
   const [songIndex, setSongIndex] = useState(Math.max(0, playlist.findIndex((item) => item.id === song.id)));
   const [slide, setSlide] = useState(1);
   const slideNumberBuffer = useRef("");
@@ -230,9 +230,21 @@ function ExtendedPresentationMode({ song, playlist = [song], outputWindow, onOpe
     if (!outputWindow || outputWindow.closed) return;
     const doc = outputWindow.document;
     doc.open();
-    doc.write(`<!doctype html><html><head><title>찬양창고 송출 화면</title><style>html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#111820}body{display:flex;align-items:center;justify-content:center}img{display:block;width:100vw;height:100vh;object-fit:cover}</style></head><body><img id="output-slide" alt="PPT 송출 화면"></body></html>`);
+    doc.write(`<!doctype html><html><head><title>찬양창고 송출 화면</title><style>html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#05080b}body{display:flex;align-items:center;justify-content:center}img{display:block;width:100vw;height:100vh;object-fit:contain;background:#05080b}</style></head><body><img id="output-slide" alt="PPT 송출 화면"></body></html>`);
     doc.close();
+    outputWindow.document.documentElement.requestFullscreen?.().catch(() => undefined);
   }, [outputWindow]);
+
+  useEffect(() => {
+    if (!outputWindow) return;
+    const checkClosed = window.setInterval(() => {
+      if (outputWindow.closed) {
+        window.clearInterval(checkClosed);
+        onOutputClosed();
+      }
+    }, 700);
+    return () => window.clearInterval(checkClosed);
+  }, [onOutputClosed, outputWindow]);
 
   useEffect(() => {
     if (!outputWindow || outputWindow.closed || !current || preparing) return;
@@ -584,6 +596,7 @@ export default function Home() {
   };
 
   const openExtendedPresentation = (song: Song) => {
+    openOutputWindow();
     setExtendedSong(song);
     if (parseSlideImages(song.slideImages).length === 0 && song.fileKey) {
       setPreparingSongId(song.id);
@@ -601,6 +614,21 @@ export default function Home() {
     extendedWindowRef.current = popup;
     setOutputWindow(popup);
     popup.focus();
+    const enterFullscreen = () => {
+      popup.document.documentElement.requestFullscreen?.().catch(() => undefined);
+      popup.focus();
+    };
+    enterFullscreen();
+    const getScreenDetails = (window as unknown as { getScreenDetails?: () => Promise<{ currentScreen?: unknown; screens: Array<{ availLeft: number; availTop: number; availWidth: number; availHeight: number }> }> }).getScreenDetails;
+    if (getScreenDetails) {
+      void getScreenDetails().then((details) => {
+        const external = details.screens.find((screen) => screen !== details.currentScreen);
+        if (!external || popup.closed) return;
+        popup.moveTo(external.availLeft, external.availTop);
+        popup.resizeTo(external.availWidth, external.availHeight);
+        enterFullscreen();
+      }).catch(() => undefined);
+    }
   };
 
   const closeExtendedPresentation = () => {
@@ -757,7 +785,7 @@ export default function Home() {
       {bulkOpen && <BulkUploadModal onClose={() => setBulkOpen(false)} onSubmit={bulkUpload} saving={bulkSaving} progress={bulkProgress} />}
       {editor !== undefined && <SongEditor song={editor} onClose={() => setEditor(undefined)} onSubmit={saveSong} saving={createSong.isPending || updateSong.isPending} />}
       {playingSong && createPortal(<PresentationMode song={playingSong} playlist={playlistSongs.length ? playlistSongs : [playingSong]} preparing={preparingSongId === playingSong.id} onClose={() => { setPlayingSong(null); setPreparingSongId(null); if (document.fullscreenElement) document.exitFullscreen?.().catch(() => undefined); }} />, document.body)}
-      {extendedSong && createPortal(<ExtendedPresentationMode song={extendedSong} playlist={playlistSongs.length ? playlistSongs : [extendedSong]} outputWindow={outputWindow} onOpenOutput={openOutputWindow} preparing={preparingSongId === extendedSong.id} onClose={closeExtendedPresentation} />, document.body)}
+      {extendedSong && createPortal(<ExtendedPresentationMode song={extendedSong} playlist={playlistSongs.length ? playlistSongs : [extendedSong]} outputWindow={outputWindow} onOpenOutput={openOutputWindow} onOutputClosed={() => { extendedWindowRef.current = null; setOutputWindow(null); }} preparing={preparingSongId === extendedSong.id} onClose={closeExtendedPresentation} />, document.body)}
     </div>
   );
 }
