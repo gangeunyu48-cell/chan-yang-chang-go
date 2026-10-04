@@ -193,7 +193,7 @@ function PresentationMode({ song, playlist = [song], onClose, preparing = false 
   const image = slideImages[slide - 1];
   return (
     <div ref={stageRef} className="slideshow-overlay ppt-only-mode" role="dialog" aria-modal="true" aria-label="PPT 슬라이드쇼">
-      <div className="slideshow-stage">
+      <div className="slideshow-stage" onClick={moveNext} onContextMenu={(event) => { event.preventDefault(); movePrevious(); }} aria-label="왼쪽 클릭 다음 슬라이드, 오른쪽 클릭 이전 슬라이드">
         {preparing ? null : image ? <img className="real-slide-image ppt-only-image" src={image} alt="PPT 슬라이드" loading="eager" decoding="sync" fetchPriority="high" /> : null}
       </div>
     </div>
@@ -285,10 +285,10 @@ function ExtendedPresentationMode({ song, playlist = [song], outputWindow, onOpe
       {playlist.length > 1 && <div className="extended-playlist" aria-label="재생목록 PPT 선택">{playlist.map((item, index) => <button key={item.id} className={index === songIndex ? "active" : ""} onClick={() => { setSongIndex(index); setSlide(1); setShowSlideOverview(false); }}><span>{index + 1}</span>{item.category === "찬송가" && item.hymnNumber ? `찬송가 ${item.hymnNumber}장` : item.title}</button>)}</div>}
       {showSlideOverview ? <div className="extended-slide-overview" aria-label={`${currentSong.title} 전체 슬라이드`}><div className="extended-overview-heading"><strong>{currentSong.title}</strong><span>슬라이드를 눌러 현재 화면으로 이동하세요 · 총 {totalSlides}장</span></div><div className="extended-slide-grid">{slideImages.map((src, index) => <button key={`${currentSong.id}-${index}`} className={index + 1 === slide ? "selected" : ""} onClick={() => { setSlide(index + 1); setShowSlideOverview(false); }}><img src={src} alt={`${index + 1}번 슬라이드`} /><span>{index + 1}</span></button>)}</div></div> : <div className="extended-stage">
         <div className="extended-side extended-previous"><span>이전</span>{previous ? <img src={previous} alt="이전 슬라이드" /> : <div className="extended-empty" />}</div>
-        <div className="extended-current">{preparing ? <div className="extended-loading"><LoaderCircle className="spin" size={28} /><span>PPT를 준비하는 중이에요</span></div> : current ? <img src={current} alt="현재 PPT 슬라이드" /> : null}<div className="extended-slide-count">{slide} / {totalSlides}</div></div>
+        <div className="extended-current" onClick={moveNext} onContextMenu={(event) => { event.preventDefault(); movePrevious(); }} aria-label="왼쪽 클릭 다음 슬라이드, 오른쪽 클릭 이전 슬라이드">{preparing ? <div className="extended-loading"><LoaderCircle className="spin" size={28} /><span>PPT를 준비하는 중이에요</span></div> : current ? <img src={current} alt="현재 PPT 슬라이드" /> : null}<div className="extended-slide-count">{slide} / {totalSlides}</div></div>
         <div className="extended-side extended-next"><span>다음</span>{next ? <img src={next} alt="다음 슬라이드" /> : <div className="extended-empty" />}</div>
       </div>}
-      <div className="extended-help">← → 슬라이드 이동 · Enter 송출 화면에서 PPT만 전체화면 · Esc 닫기</div>
+      <div className="extended-help">왼쪽 클릭 다음 · 오른쪽 클릭 이전 · ← → 이동 · Enter 송출 화면 전체화면 · Esc 닫기</div>
     </div>
   );
 }
