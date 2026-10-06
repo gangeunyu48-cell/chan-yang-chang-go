@@ -10,9 +10,9 @@
   "theme_color": "#0b141d",
   "icons": [
     {
-      "src": "/praise-archive-icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "/manus-storage/changgo-app-icon_836477b1.png",
+      "sizes": "1254x1254",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ]

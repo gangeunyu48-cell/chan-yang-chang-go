@@ -66,6 +66,7 @@ button:focus-visible, input:focus-visible { outline: 3px solid rgba(208, 161, 82
 .sidebar-top { display: flex; align-items: center; justify-content: space-between; padding: 0 11px 0 13px; }
 .app-logo, .brand-mark { display: flex; align-items: center; }
 .app-logo { gap: 11px; }
+.app-icon-image { display: block; width: 39px; height: 39px; flex: 0 0 auto; object-fit: cover; border-radius: 11px; box-shadow: 0 5px 14px rgba(33, 63, 105, .22); }
 .brand-mark { position: relative; width: 33px; height: 33px; border-radius: 10px; background: #213f69; color: #f3d495; overflow: hidden; box-shadow: 0 5px 14px rgba(33, 63, 105, .16); }
 .brand-note { position: absolute; font-family: Georgia, serif; line-height: 1; transform: rotate(-10deg); }
 .brand-note-one { top: 4px; left: 6px; font-size: 17px; }

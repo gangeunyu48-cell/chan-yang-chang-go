@@ -17,7 +17,6 @@ import {
   Link2,
   ListPlus,
   LoaderCircle,
-  Maximize2,
   Menu,
   MonitorPlay,
   MoreHorizontal,
@@ -57,21 +56,12 @@ const categories: { label: Category; icon: typeof LibraryBig }[] = [
 
 const colors = ["rose", "sage", "amber", "blue", "violet", "teal"];
 const emptyForm: FormState = { title: "", category: "CCM", hymnNumber: "", slideCount: "1" };
-
-function BrandMark() {
-  return (
-    <div className="brand-mark" aria-hidden="true">
-      <span className="brand-note brand-note-one">♪</span>
-      <span className="brand-note brand-note-two">♫</span>
-      <span className="brand-stem" />
-    </div>
-  );
-}
+const appIconUrl = "/manus-storage/changgo-app-icon_836477b1.png";
 
 function AppLogo() {
   return (
     <div className="app-logo">
-      <BrandMark />
+      <img className="app-icon-image" src={appIconUrl} alt="찬양창고 앱 아이콘" />
       <div>
         <div className="logo-name-row"><div className="logo-name">찬양창고</div><span className="logo-maker">K.E.Y제작</span></div>
         <div className="logo-subtitle">PRAISE ARCHIVE</div>
@@ -286,7 +276,7 @@ function ExtendedPresentationMode({ song, playlist = [song], outputWindow, onOpe
 
   return (
     <div className="extended-presenter" role="dialog" aria-modal="true" aria-label="확장 PPT 발표 화면">
-      <div className="extended-presenter-bar"><strong>확장 화면</strong><span>컴퓨터: 이전·현재·다음 PPT / 송출: 현재 PPT</span><div className="extended-presenter-actions"><button className="output-screen-button" onClick={onOpenOutput}><MonitorPlay size={15} /> 송출 화면</button><button className={`output-screen-button ${showSlideOverview ? "overview-active" : ""}`} onClick={() => { setShowSlideOverview((value) => !value); setShowPlaylistOverview(false); }} aria-label="현재 PPT 전체 슬라이드 보기" title="현재 PPT의 모든 슬라이드 보기"><Maximize2 size={15} /> 전체 PPT</button><button className={`output-screen-button ${showPlaylistOverview ? "overview-active" : ""}`} onClick={() => { setShowPlaylistOverview((value) => !value); setShowSlideOverview(false); }} aria-label="전체 PPT 넘기기" title="재생목록의 PPT를 선택해 송출 화면을 전환"><LayoutGrid size={15} /> 전체 PPT 넘기기</button><button className="icon-button icon-button-dark" onClick={onClose} aria-label="확장 화면 닫기"><X size={20} /></button></div></div>
+      <div className="extended-presenter-bar"><strong>확장 화면</strong><span>컴퓨터: 이전·현재·다음 PPT / 송출: 현재 PPT</span><div className="extended-presenter-actions"><button className="output-screen-button" onClick={onOpenOutput}><MonitorPlay size={15} /> 송출 화면</button><button className={`output-screen-button ${showPlaylistOverview ? "overview-active" : ""}`} onClick={() => { setShowPlaylistOverview((value) => !value); setShowSlideOverview(false); }} aria-label="전체 PPT 넘기기" title="재생목록의 PPT를 선택해 송출 화면을 전환"><LayoutGrid size={15} /> 전체 PPT 넘기기</button><button className="icon-button icon-button-dark" onClick={onClose} aria-label="확장 화면 닫기"><X size={20} /></button></div></div>
       {playlist.length > 1 && <div className="extended-playlist" aria-label="재생목록 PPT 선택">{playlist.map((item, index) => <button key={item.id} className={index === songIndex ? "active" : ""} onClick={() => { setSongIndex(index); setSlide(1); setShowSlideOverview(false); }}><span>{index + 1}</span>{item.category === "찬송가" && item.hymnNumber ? `찬송가 ${item.hymnNumber}장` : item.title}</button>)}</div>}
       {showPlaylistOverview ? <div className="extended-slide-overview extended-playlist-overview" aria-label="전체 PPT 넘기기"><div className="extended-overview-heading"><strong>전체 PPT 넘기기</strong><span>{outputNotice} · 전체 {allPlaylistSlides.length}장</span></div><div className="extended-slide-grid extended-all-slides-grid">{allPlaylistSlides.map(({ item, itemIndex, slideIndex, src }) => { const isSelected = itemIndex === songIndex && slideIndex + 1 === slide; return <button key={`${item.id}-${slideIndex}`} className={isSelected ? "selected" : ""} onClick={() => { setSongIndex(itemIndex); setSlide(slideIndex + 1); setOutputNotice(`${itemIndex + 1}번 PPT · ${item.category === "찬송가" && item.hymnNumber ? `찬송가 ${item.hymnNumber}장` : item.title} · 슬라이드 ${slideIndex + 1} 송출 중`); }}><img src={src} alt={`${item.title} ${slideIndex + 1}번 슬라이드`} />{isSelected && <em>현재 송출 중</em>}<span>{itemIndex + 1}번 PPT · 슬라이드 {slideIndex + 1}</span></button>; })}</div><div className="extended-output-preview"><div className="extended-output-preview-head"><strong><MonitorPlay size={16} /> 송출 화면</strong><span>선택한 슬라이드 1장만 표시</span></div><div className="extended-output-preview-stage">{current ? <img src={current} alt="현재 송출 중인 슬라이드" /> : <span>현재 슬라이드를 준비하는 중이에요</span>}</div></div></div> : showSlideOverview ? <div className="extended-slide-overview" aria-label={`${currentSong.title} 전체 슬라이드`}><div className="extended-overview-heading"><strong>확장 화면 (슬라이드 목록)</strong><span>{currentSong.title} · 슬라이드를 누르면 한 장만 송출됩니다</span></div><div className="extended-slide-grid">{slideImages.map((src, index) => <button key={`${currentSong.id}-${index}`} className={index + 1 === slide ? "selected" : ""} onClick={() => setSlide(index + 1)}><img src={src} alt={`${index + 1}번 슬라이드`} />{index + 1 === slide && <em>현재 송출 중</em>}<span>슬라이드 {index + 1}</span></button>)}</div><div className="extended-output-preview"><div className="extended-output-preview-head"><strong><MonitorPlay size={16} /> 송출 화면</strong><span>슬라이드 {slide}만 표시</span></div><div className="extended-output-preview-stage">{current ? <img src={current} alt="현재 송출 중인 슬라이드" /> : <span>현재 슬라이드를 준비하는 중이에요</span>}</div></div></div> : <div className="extended-stage">
         <div className="extended-side extended-previous"><span>이전</span>{previous ? <img src={previous} alt="이전 슬라이드" /> : <div className="extended-empty" />}</div>
