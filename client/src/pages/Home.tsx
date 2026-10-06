@@ -234,7 +234,7 @@ function ExtendedPresentationMode({ song, playlist = [song], outputWindow, onOpe
     if (!outputWindow || outputWindow.closed) return;
     const doc = outputWindow.document;
     doc.open();
-    doc.write(`<!doctype html><html><head><title>찬양창고 송출 화면</title><style>html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#05080b}body{display:flex;align-items:center;justify-content:center}img{display:block;width:100vw;height:100vh;object-fit:contain;background:#05080b}</style></head><body><img id="output-slide" alt="PPT 송출 화면"></body></html>`);
+    doc.write(`<!doctype html><html><head><title>찬양창고 송출 화면</title><style>html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#05080b;cursor:none}body{display:flex;align-items:center;justify-content:center}img{display:block;width:100vw;height:100vh;object-fit:contain;background:#05080b;cursor:none}</style></head><body><img id="output-slide" alt="PPT 송출 화면"></body></html>`);
     doc.close();
     outputWindow.document.documentElement.requestFullscreen?.().catch(() => undefined);
   }, [outputWindow]);
