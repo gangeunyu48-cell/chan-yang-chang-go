@@ -310,6 +310,7 @@ h1 em { color: #b28651; font-style: normal; }
 }
 
 /* PPT-only playback */
+html:has(.ppt-only-mode),body:has(.ppt-only-mode){overflow:hidden!important;scrollbar-width:none!important;-ms-overflow-style:none!important}html:has(.ppt-only-mode)::-webkit-scrollbar,body:has(.ppt-only-mode)::-webkit-scrollbar,.ppt-only-mode::-webkit-scrollbar{display:none!important;width:0!important;height:0!important}
 .ppt-only-mode,.ppt-only-mode:fullscreen{position:fixed!important;inset:0!important;z-index:9999!important;display:block!important;width:100vw!important;height:100vh!important;padding:0!important;overflow:hidden!important;background:#111820!important;cursor:none!important}
 :fullscreen .ppt-only-mode{position:fixed!important;inset:0!important;width:100vw!important;height:100vh!important}
 .ppt-only-mode .slideshow-stage,.ppt-only-mode:fullscreen .slideshow-stage{position:absolute!important;inset:0!important;display:block!important;width:100%!important;height:100%!important;padding:0!important;margin:0!important;overflow:hidden!important;background:#111820!important;cursor:none!important}

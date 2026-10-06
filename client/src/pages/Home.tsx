@@ -145,6 +145,17 @@ function PresentationMode({ song, playlist = [song], onClose, preparing = false 
   const slideImages = parseSlideImages(currentSong.slideImages);
   const totalSlides = slideImages.length || Math.max(1, currentSong.slideCount);
 
+  useEffect(() => {
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+    const previousBodyOverflow = document.body.style.overflow;
+    document.documentElement.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.documentElement.style.overflow = previousHtmlOverflow;
+      document.body.style.overflow = previousBodyOverflow;
+    };
+  }, []);
+
   const moveNext = () => {
     if (slide < totalSlides) setSlide((value) => value + 1);
     else if (songIndex < playlist.length - 1) { setSongIndex((value) => value + 1); setSlide(1); }
