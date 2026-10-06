@@ -234,7 +234,7 @@ function ExtendedPresentationMode({ song, playlist = [song], outputWindow, onOpe
     if (!outputWindow || outputWindow.closed) return;
     const doc = outputWindow.document;
     doc.open();
-    doc.write(`<!doctype html><html><head><title>찬양창고 송출 화면</title><style>html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#05080b;cursor:none}body{display:flex;align-items:center;justify-content:center}img{display:block;width:100vw;height:100vh;object-fit:contain;background:#05080b;cursor:none}</style></head><body><img id="output-slide" alt="PPT 송출 화면"></body></html>`);
+    doc.write(`<!doctype html><html><head><title>찬양창고 송출 화면</title><style>html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#05080b;cursor:none}body{display:flex;align-items:center;justify-content:center}img{display:block;width:100vw;height:100vh;object-fit:contain;background:#05080b;cursor:none}.output-empty{color:rgba(255,255,255,.45);font:14px sans-serif}</style></head><body><img id="output-slide" alt="PPT 송출 화면"><span id="output-empty" class="output-empty">송출 화면을 준비하는 중이에요</span></body></html>`);
     doc.close();
     outputWindow.document.documentElement.requestFullscreen?.().catch(() => undefined);
   }, [outputWindow]);
@@ -253,6 +253,7 @@ function ExtendedPresentationMode({ song, playlist = [song], outputWindow, onOpe
   useEffect(() => {
     if (!outputWindow || outputWindow.closed || !current || preparing) return;
     outputWindow.document.getElementById("output-slide")?.setAttribute("src", current);
+    outputWindow.document.getElementById("output-empty")?.setAttribute("style", "display:none");
   }, [outputWindow, current, preparing]);
 
   useEffect(() => {
@@ -600,8 +601,10 @@ export default function Home() {
   };
 
   const openExtendedPresentation = (song: Song) => {
-    openOutputWindow();
+    // Prepare the presenter state first, then open the output window from the
+    // same click so the current/next controls and output stay synchronized.
     setExtendedSong(song);
+    openOutputWindow();
     if (parseSlideImages(song.slideImages).length === 0 && song.fileKey) {
       setPreparingSongId(song.id);
       prepareSlides.mutate({ id: song.id }, {
