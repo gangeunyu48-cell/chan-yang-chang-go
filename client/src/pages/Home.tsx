@@ -56,7 +56,7 @@ const categories: { label: Category; icon: typeof LibraryBig }[] = [
 
 const colors = ["rose", "sage", "amber", "blue", "violet", "teal"];
 const emptyForm: FormState = { title: "", category: "CCM", hymnNumber: "", slideCount: "1" };
-const appIconUrl = "/manus-storage/changgo-app-icon_836477b1.png";
+const appIconUrl = "/manus-storage/changgo-app-icon-new_bea705f4.png";
 
 function AppLogo() {
   return (
