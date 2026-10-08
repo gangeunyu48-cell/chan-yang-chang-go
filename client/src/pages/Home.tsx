@@ -61,6 +61,17 @@ const colors = ["rose", "sage", "amber", "blue", "violet", "teal"];
 const emptyForm: FormState = { title: "", category: "CCM", hymnNumber: "", slideCount: "1", youtubeUrl: "" };
 const appIconUrl = "/manus-storage/changgo-app-icon-new_bea705f4.png";
 
+function getYoutubeEmbedUrl(value: string | null | undefined) {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    const id = url.searchParams.get("v") ?? url.pathname.match(/\/(?:shorts|embed)\/([^/]+)/)?.[1] ?? (url.hostname === "youtu.be" ? url.pathname.slice(1).split("/")[0] : null);
+    return id ? `https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}?rel=0` : null;
+  } catch {
+    return null;
+  }
+}
+
 function AppLogo() {
   return (
     <div className="app-logo">
@@ -103,6 +114,18 @@ function MusicPaper({ song, compact = false }: { song: Song; compact?: boolean }
 
 function FileTypeBadge({ song }: { song: Song }) {
   return <span className="file-type-badge"><FileMusic size={14} strokeWidth={2.1} /> {song.fileName ? song.fileName.split(".").pop()?.toUpperCase() : "PPTX"}</span>;
+}
+
+function YoutubePlayerModal({ song, onClose }: { song: Song; onClose: () => void }) {
+  const embedUrl = getYoutubeEmbedUrl(song.youtubeUrl);
+  return (
+    <div className="youtube-modal-backdrop" role="dialog" aria-modal="true" aria-label={`${song.title} 유튜브 영상`} onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+      <div className="youtube-modal">
+        <div className="youtube-modal-head"><div><span><Youtube size={16} /> 찬양창고 영상</span><strong>{song.title}</strong></div><button className="youtube-modal-close" onClick={onClose} aria-label="유튜브 창 닫기"><X size={20} /></button></div>
+        <div className="youtube-player-frame">{embedUrl ? <iframe src={embedUrl} title={`${song.title} 유튜브 영상`} allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowFullScreen /> : <p>유튜브 링크를 재생할 수 없습니다.</p>}</div>
+      </div>
+    </div>
+  );
 }
 
 async function encodeFile(file: File): Promise<FilePayload> {
@@ -433,6 +456,7 @@ export default function Home() {
   const [visibleCount, setVisibleCount] = useState(30);
   const [editor, setEditor] = useState<Song | null | undefined>(undefined);
   const [playingSong, setPlayingSong] = useState<Song | null>(null);
+  const [youtubeSong, setYoutubeSong] = useState<Song | null>(null);
   const [playlistSongs, setPlaylistSongs] = useState<Song[]>([]);
   const [extendedSong, setExtendedSong] = useState<Song | null>(null);
   const extendedWindowRef = useRef<Window | null>(null);
@@ -449,6 +473,13 @@ export default function Home() {
   const [bulkSaving, setBulkSaving] = useState(false);
   const [preparingSongId, setPreparingSongId] = useState<number | null>(null);
   const [prepareAllProgress, setPrepareAllProgress] = useState({ done: 0, total: 0 });
+
+  useEffect(() => {
+    if (!youtubeSong) return;
+    const closeWithEscape = (event: KeyboardEvent) => { if (event.key === "Escape") setYoutubeSong(null); };
+    window.addEventListener("keydown", closeWithEscape);
+    return () => window.removeEventListener("keydown", closeWithEscape);
+  }, [youtubeSong]);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [appSettings, setAppSettings] = useState<AppSettings>(() => {
     try {
@@ -786,7 +817,7 @@ export default function Home() {
       toast.info("이 곡에는 아직 유튜브 링크가 등록되지 않았어요.");
       return;
     }
-    window.open(song.youtubeUrl, "_blank", "noopener,noreferrer");
+    setYoutubeSong(song);
   };
 
   const dropFile = (event: DragEvent<HTMLDivElement>) => {
@@ -852,6 +883,7 @@ export default function Home() {
       {editor !== undefined && <SongEditor song={editor} onClose={() => setEditor(undefined)} onSubmit={saveSong} saving={createSong.isPending || updateSong.isPending} />}
       {playingSong && createPortal(<PresentationMode song={playingSong} playlist={playlistSongs.length ? playlistSongs : [playingSong]} preparing={preparingSongId === playingSong.id} onClose={() => { setPlayingSong(null); setPreparingSongId(null); if (document.fullscreenElement) document.exitFullscreen?.().catch(() => undefined); }} />, document.body)}
       {extendedSong && createPortal(<ExtendedPresentationMode song={extendedSong} playlist={playlistSongs.length ? playlistSongs : [extendedSong]} outputWindow={outputWindow} onOpenOutput={openOutputWindow} onOutputClosed={() => { extendedWindowRef.current = null; setOutputWindow(null); }} preparing={preparingSongId === extendedSong.id} onClose={closeExtendedPresentation} />, document.body)}
+      {youtubeSong && <YoutubePlayerModal song={youtubeSong} onClose={() => setYoutubeSong(null)} />}
     </div>
   );
 }
