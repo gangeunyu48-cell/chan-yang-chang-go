@@ -608,6 +608,7 @@ export default function Home() {
 
   const refreshScreenDetails = async () => {
     const browserWindow = window as Window & { getScreenDetails?: () => Promise<ScreenDetailsLike> };
+    externalScreenRef.current = null;
     if (!browserWindow.getScreenDetails) return null;
     try {
       const permissionQuery = navigator.permissions?.query as ((descriptor: { name: string }) => Promise<PermissionStatus>) | undefined;
@@ -643,7 +644,15 @@ export default function Home() {
     // same click so the current/next controls and output stay synchronized.
     setExtendedSong(song);
     await refreshScreenDetails();
-    openOutputWindow();
+    if (!externalScreenRef.current) {
+      if (extendedWindowRef.current && !extendedWindowRef.current.closed) extendedWindowRef.current.close();
+      extendedWindowRef.current = null;
+      setOutputWindow(null);
+      toast.info("확장 모니터가 없어 이 화면에서 전체화면으로 발표합니다.");
+      document.documentElement.requestFullscreen?.().catch(() => undefined);
+    } else {
+      openOutputWindow();
+    }
     if (parseSlideImages(song.slideImages).length === 0 && song.fileKey) {
       setPreparingSongId(song.id);
       prepareSlides.mutate({ id: song.id }, {
@@ -655,6 +664,12 @@ export default function Home() {
 
   const openOutputWindow = () => {
     if (outputWindow && !outputWindow.closed) { outputWindow.focus(); return; }
+    const external = externalScreenRef.current;
+    if (!external) {
+      toast.info("확장 모니터가 없어 이 화면에서 전체화면으로 발표합니다.");
+      document.documentElement.requestFullscreen?.().catch(() => undefined);
+      return;
+    }
     const popup = window.open("", "changgo-extended-output", "popup=yes,width=1280,height=720");
     if (!popup) { toast.error("송출 화면 창이 차단되었어요. 브라우저에서 팝업을 허용해 주세요."); return; }
     extendedWindowRef.current = popup;
@@ -665,7 +680,6 @@ export default function Home() {
       popup.focus();
     };
     enterFullscreen();
-    const external = externalScreenRef.current;
     if (external && !popup.closed) {
       popup.moveTo(external.availLeft, external.availTop);
       popup.resizeTo(external.availWidth, external.availHeight);
