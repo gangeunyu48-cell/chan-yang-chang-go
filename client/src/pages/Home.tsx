@@ -30,6 +30,7 @@ import {
   ShieldCheck,
   Trash2,
   UploadCloud,
+  Youtube,
   X,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -39,7 +40,7 @@ import type { AppRouter } from "../../../server/routers";
 type Song = inferRouterOutputs<AppRouter>["songs"]["list"][number];
 type Category = "전체 악보" | "찬송가" | "CCM";
 type AppSettings = { theme: "light" | "dark"; background: "ivory" | "mist" | "sage" | "lavender"; fontScale: "small" | "medium" | "large"; showPreview: boolean };
-type FormState = { title: string; category: "찬송가" | "CCM"; hymnNumber: string; slideCount: string };
+type FormState = { title: string; category: "찬송가" | "CCM"; hymnNumber: string; slideCount: string; youtubeUrl: string };
 type PresentationScreen = { availLeft: number; availTop: number; availWidth: number; availHeight: number };
 type ScreenDetailsLike = { currentScreen?: PresentationScreen; screens: PresentationScreen[]; addEventListener?: (type: "screenschange", listener: () => void) => void; removeEventListener?: (type: "screenschange", listener: () => void) => void };
 
@@ -57,7 +58,7 @@ const categories: { label: Category; icon: typeof LibraryBig }[] = [
 ];
 
 const colors = ["rose", "sage", "amber", "blue", "violet", "teal"];
-const emptyForm: FormState = { title: "", category: "CCM", hymnNumber: "", slideCount: "1" };
+const emptyForm: FormState = { title: "", category: "CCM", hymnNumber: "", slideCount: "1", youtubeUrl: "" };
 const appIconUrl = "/manus-storage/changgo-app-icon-new_bea705f4.png";
 
 function AppLogo() {
@@ -366,7 +367,7 @@ function SongEditor({
   onSubmit: (form: FormState, file: File | null) => void;
   saving: boolean;
 }) {
-  const [form, setForm] = useState<FormState>(() => song ? { title: song.title, category: song.category === "찬송가" ? "찬송가" : "CCM", hymnNumber: song.hymnNumber ? String(song.hymnNumber) : "", slideCount: String(song.slideCount) } : emptyForm);
+  const [form, setForm] = useState<FormState>(() => song ? { title: song.title, category: song.category === "찬송가" ? "찬송가" : "CCM", hymnNumber: song.hymnNumber ? String(song.hymnNumber) : "", slideCount: String(song.slideCount), youtubeUrl: song.youtubeUrl ?? "" } : emptyForm);
   const [file, setFile] = useState<File | null>(null);
 
   const chooseFile = (event: ChangeEvent<HTMLInputElement>) => {
@@ -396,6 +397,7 @@ function SongEditor({
           <label>곡 이름<input autoFocus value={form.title} onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} placeholder="예: 은혜" /></label>
           <div className="field-grid"><label>분류<select value={form.category} onChange={(event) => setForm((current) => ({ ...current, category: event.target.value as "찬송가" | "CCM" }))}><option value="CCM">CCM</option><option value="찬송가">찬송가</option></select></label><label>슬라이드 수<input type="number" min="1" max="999" value={form.slideCount} onChange={(event) => setForm((current) => ({ ...current, slideCount: event.target.value }))} /></label></div>
           {form.category === "찬송가" && <label className="hymn-number-field">찬송가 장 번호<input type="number" min="1" max="999" value={form.hymnNumber} onChange={(event) => setForm((current) => ({ ...current, hymnNumber: event.target.value }))} placeholder="예: 310" /><span>예배 책자에 표시할 몇 장인지 입력하세요.</span></label>}
+          <label>유튜브 링크<input type="url" value={form.youtubeUrl} onChange={(event) => setForm((current) => ({ ...current, youtubeUrl: event.target.value }))} placeholder="https://www.youtube.com/watch?v=..." /><span>관리자만 저장할 수 있으며, 곡 카드의 유튜브 아이콘으로 열 수 있어요.</span></label>
           <label className="file-picker-label">PPT 원본 파일<span className="file-picker"><FileUp size={19} /><span>{file?.name ?? song?.fileName ?? "PPT, PPTX 또는 PDF 선택"}</span><input type="file" accept=".ppt,.pptx,.pdf" onChange={chooseFile} /></span></label>
           <div className="editor-note"><Check size={15} /> 수정하면 다른 화면에도 3초 안에 자동으로 반영됩니다.</div>
         </div>
@@ -709,7 +711,7 @@ export default function Home() {
       filePayload = await encodeFile(file);
     }
     const parsedHymnNumber = Number(form.hymnNumber);
-    const base = { title: form.title.trim(), category: form.category, hymnNumber: form.category === "찬송가" && Number.isInteger(parsedHymnNumber) && parsedHymnNumber >= 1 ? parsedHymnNumber : null, slideCount: Math.max(1, Number(form.slideCount) || 1) };
+    const base = { title: form.title.trim(), category: form.category, hymnNumber: form.category === "찬송가" && Number.isInteger(parsedHymnNumber) && parsedHymnNumber >= 1 ? parsedHymnNumber : null, slideCount: Math.max(1, Number(form.slideCount) || 1), youtubeUrl: form.youtubeUrl.trim() || null };
     if (editor) {
       updateSong.mutate({ id: editor.id, adminPassword, data: base, file: filePayload });
     } else {
@@ -779,6 +781,14 @@ export default function Home() {
     }
   };
 
+  const openYoutube = (song: Song) => {
+    if (!song.youtubeUrl) {
+      toast.info("이 곡에는 아직 유튜브 링크가 등록되지 않았어요.");
+      return;
+    }
+    window.open(song.youtubeUrl, "_blank", "noopener,noreferrer");
+  };
+
   const dropFile = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault();
     setIsDragging(false);
@@ -832,7 +842,7 @@ export default function Home() {
 
           {playlistSongs.length > 0 && <section className="playlist-panel"><div className="playlist-panel-head"><div><div className="section-kicker">PPT PLAYLIST</div><strong>재생목록 {playlistSongs.length}곡</strong><span>마지막 슬라이드 뒤 다음 PPT가 자동으로 이어집니다.</span></div><div className="playlist-panel-actions"><button className="playlist-start" onClick={startPlaylist}><Play size={14} fill="currentColor" /> 복제 재생</button><button className="playlist-extend" onClick={startExtendedPlaylist}><MonitorPlay size={14} /> 확장 재생</button><button className="playlist-clear" onClick={() => setPlaylistSongs([])}>전체 비우기</button></div></div><div className="playlist-items">{playlistSongs.map((item, index) => <div className="playlist-item" key={item.id}><span className="playlist-index">{index + 1}</span><span>{item.category === "찬송가" && item.hymnNumber ? `${item.hymnNumber}장 ` : ""}{item.title}</span><button onClick={() => removeFromPlaylist(item.id)} aria-label={`${item.title} 재생목록에서 제거`}><X size={14} /></button></div>)}</div></section>}
           <section className="library-section"><div className="section-heading"><div><div className="section-kicker">YOUR SONGS</div><h2>{activeCategory}</h2><span className="result-count">{filteredSongs.length}곡</span></div><div className="view-tools"><div className="search-box"><Search size={17} /><input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="곡 이름 검색" aria-label="곡 이름 검색" /></div><button className="refresh-chip" onClick={() => songsQuery.refetch()}><span className="refresh-dot" /> 새로고침</button></div></div>
-            {songsQuery.isLoading ? <div className="loading-state"><LoaderCircle className="spin" size={25} /><span>찬양곡을 불러오는 중이에요...</span></div> : filteredSongs.length ? <><div className="song-list">{visibleSongs.map((song) => <article className="song-card" key={song.id}><div className="song-preview"><MusicPaper song={song} compact /></div><div className="song-main"><div className="song-title-line"><div><h3>{song.title}</h3><div className="song-meta"><span className={`category-badge badge-${song.category === "찬송가" ? "hymn" : "ccm"}`}>{song.category}</span>{song.category === "찬송가" && song.hymnNumber && <span className="hymn-number-badge">{song.hymnNumber}장</span>}</div></div><div className="song-menu-wrap"><button className="more-button" onClick={(event) => { event.stopPropagation(); setMenuSongId(menuSongId === song.id ? null : song.id); }} aria-label={`${song.title} 메뉴`}><MoreHorizontal size={19} /></button>{menuSongId === song.id && <div className="song-menu" onClick={(event) => event.stopPropagation()}><button onClick={() => { openEditor(song); setMenuSongId(null); }}><Pencil size={14} /> 곡 정보 수정</button><button className="danger" onClick={() => { if (!adminPassword) { setMenuSongId(null); openAdminGate(); return; } if (window.confirm(`'${song.title}' 곡을 삭제할까요?`)) removeSong.mutate({ id: song.id, adminPassword }); setMenuSongId(null); }}><Trash2 size={14} /> 곡 삭제</button></div>}</div></div><div className="song-bottom"><FileTypeBadge song={song} /><span className="slide-count"><FileMusic size={13} /> {song.slideCount} slides</span><div className="song-actions"><button className="slide-action" onClick={() => openPresentation(song)}><Play size={14} fill="currentColor" /> 슬라이드쇼</button><button className="playlist-add-action" onClick={() => addToPlaylist(song)} aria-label={`${song.title} 재생목록에 추가`} title="재생목록에 추가"><ListPlus size={16} /></button><button className="extended-action" onClick={() => openExtendedPresentation(song)} aria-label={`${song.title} 확장 화면`} title="확장 화면"><MonitorPlay size={16} /></button><button className="download-action" onClick={() => downloadSong(song)} aria-label={`${song.title} 다운로드`}><ArrowDownToLine size={17} /></button></div></div></div></article>)}</div>{hasMoreSongs && <div className="load-more-wrap"><button className="load-more-button" onClick={() => setVisibleCount((count) => count + 30)}>더보기 <span>{Math.min(30, filteredSongs.length - visibleSongs.length)}개</span></button></div>}</> : <div className="empty-state"><FolderOpen size={25} /><h3>{searchQuery ? "검색 결과가 없어요" : "아직 곡이 없어요"}</h3><p>관리자 모드에서 첫 곡을 등록해 보세요.</p><button onClick={() => openEditor(null)}><Plus size={15} /> 곡 추가</button></div>}
+            {songsQuery.isLoading ? <div className="loading-state"><LoaderCircle className="spin" size={25} /><span>찬양곡을 불러오는 중이에요...</span></div> : filteredSongs.length ? <><div className="song-list">{visibleSongs.map((song) => <article className="song-card" key={song.id}><div className="song-preview"><MusicPaper song={song} compact /></div><div className="song-main"><div className="song-title-line"><div><h3>{song.title}</h3><div className="song-meta"><span className={`category-badge badge-${song.category === "찬송가" ? "hymn" : "ccm"}`}>{song.category}</span>{song.category === "찬송가" && song.hymnNumber && <span className="hymn-number-badge">{song.hymnNumber}장</span>}</div></div><div className="song-menu-wrap"><button className="more-button" onClick={(event) => { event.stopPropagation(); setMenuSongId(menuSongId === song.id ? null : song.id); }} aria-label={`${song.title} 메뉴`}><MoreHorizontal size={19} /></button>{menuSongId === song.id && <div className="song-menu" onClick={(event) => event.stopPropagation()}><button onClick={() => { openEditor(song); setMenuSongId(null); }}><Pencil size={14} /> 곡 정보 수정</button><button className="danger" onClick={() => { if (!adminPassword) { setMenuSongId(null); openAdminGate(); return; } if (window.confirm(`'${song.title}' 곡을 삭제할까요?`)) removeSong.mutate({ id: song.id, adminPassword }); setMenuSongId(null); }}><Trash2 size={14} /> 곡 삭제</button></div>}</div></div><div className="song-bottom"><FileTypeBadge song={song} /><span className="slide-count"><FileMusic size={13} /> {song.slideCount} slides</span><div className="song-actions"><button className="slide-action" onClick={() => openPresentation(song)}><Play size={14} fill="currentColor" /> 슬라이드쇼</button><button className="playlist-add-action" onClick={() => addToPlaylist(song)} aria-label={`${song.title} 재생목록에 추가`} title="재생목록에 추가"><ListPlus size={16} /></button><button className="extended-action" onClick={() => openExtendedPresentation(song)} aria-label={`${song.title} 확장 화면`} title="확장 화면"><MonitorPlay size={16} /></button><button className={`youtube-action ${song.youtubeUrl ? "has-youtube" : "is-empty"}`} onClick={(event) => { event.stopPropagation(); openYoutube(song); }} aria-label={`${song.title} 유튜브 링크`} title={song.youtubeUrl ? "유튜브 열기" : "유튜브 링크 없음"}><Youtube size={17} /></button><button className="download-action" onClick={() => downloadSong(song)} aria-label={`${song.title} 다운로드`}><ArrowDownToLine size={17} /></button></div></div></div></article>)}</div>{hasMoreSongs && <div className="load-more-wrap"><button className="load-more-button" onClick={() => setVisibleCount((count) => count + 30)}>더보기 <span>{Math.min(30, filteredSongs.length - visibleSongs.length)}개</span></button></div>}</> : <div className="empty-state"><FolderOpen size={25} /><h3>{searchQuery ? "검색 결과가 없어요" : "아직 곡이 없어요"}</h3><p>관리자 모드에서 첫 곡을 등록해 보세요.</p><button onClick={() => openEditor(null)}><Plus size={15} /> 곡 추가</button></div>}
           </section>
           <footer className="page-footer"><span>찬양창고 · 함께 만드는 예배 자료실</span><span>{songsQuery.dataUpdatedAt ? `마지막 동기화 ${formatUpdated(new Date(songsQuery.dataUpdatedAt))}` : "실시간 연결 중"}</span></footer>
         </div>

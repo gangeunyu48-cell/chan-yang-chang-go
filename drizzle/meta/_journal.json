@@ -22,6 +22,13 @@
       "when": 1789129161340,
       "tag": "0002_last_black_crow",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "5",
+      "when": 1791445339097,
+      "tag": "0003_peaceful_archangel",
+      "breakpoints": true
     }
   ]
 }

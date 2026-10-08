@@ -11,12 +11,21 @@ import { renderSlideImages } from "./slideRenderer";
 
 const categories = ["찬송가", "CCM"] as const;
 const colors = ["rose", "sage", "amber", "blue", "violet", "teal"];
+const youtubeUrlField = z.string().trim().url().max(1000).refine((value) => {
+  try {
+    const hostname = new URL(value).hostname.toLowerCase().replace(/^www\./, "");
+    return hostname === "youtube.com" || hostname === "m.youtube.com" || hostname === "youtu.be" || hostname === "music.youtube.com";
+  } catch {
+    return false;
+  }
+}, "유튜브 링크만 입력할 수 있습니다.").nullable().optional();
 const songFields = z.object({
   title: z.string().trim().min(1).max(255),
   category: z.enum(categories),
   hymnNumber: z.number().int().min(1).max(999).nullable().optional(),
   slideCount: z.number().int().min(1).max(999).default(1),
   color: z.string().max(24).default("blue"),
+  youtubeUrl: youtubeUrlField,
 });
 
 const fileInput = z.object({
