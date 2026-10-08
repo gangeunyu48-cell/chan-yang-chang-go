@@ -40,6 +40,8 @@ type Song = inferRouterOutputs<AppRouter>["songs"]["list"][number];
 type Category = "전체 악보" | "찬송가" | "CCM";
 type AppSettings = { theme: "light" | "dark"; background: "ivory" | "mist" | "sage" | "lavender"; fontScale: "small" | "medium" | "large"; showPreview: boolean };
 type FormState = { title: string; category: "찬송가" | "CCM"; hymnNumber: string; slideCount: string };
+type PresentationScreen = { availLeft: number; availTop: number; availWidth: number; availHeight: number };
+type ScreenDetailsLike = { currentScreen?: PresentationScreen; screens: PresentationScreen[]; addEventListener?: (type: "screenschange", listener: () => void) => void; removeEventListener?: (type: "screenschange", listener: () => void) => void };
 
 type FilePayload = {
   fileName: string;
@@ -432,6 +434,9 @@ export default function Home() {
   const [playlistSongs, setPlaylistSongs] = useState<Song[]>([]);
   const [extendedSong, setExtendedSong] = useState<Song | null>(null);
   const extendedWindowRef = useRef<Window | null>(null);
+  const screenDetailsRef = useRef<ScreenDetailsLike | null>(null);
+  const externalScreenRef = useRef<PresentationScreen | null>(null);
+  const screenChangeCleanupRef = useRef<(() => void) | null>(null);
   const [outputWindow, setOutputWindow] = useState<Window | null>(null);
   const [menuSongId, setMenuSongId] = useState<number | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -601,10 +606,43 @@ export default function Home() {
     }
   };
 
-  const openExtendedPresentation = (song: Song) => {
+  const refreshScreenDetails = async () => {
+    const browserWindow = window as Window & { getScreenDetails?: () => Promise<ScreenDetailsLike> };
+    if (!browserWindow.getScreenDetails) return null;
+    try {
+      const permissionQuery = navigator.permissions?.query as ((descriptor: { name: string }) => Promise<PermissionStatus>) | undefined;
+      if (permissionQuery) await permissionQuery({ name: "window-management" });
+      const details = await browserWindow.getScreenDetails();
+      screenDetailsRef.current = details;
+      const external = details.screens.find((screen) => screen !== details.currentScreen) ?? null;
+      externalScreenRef.current = external;
+      screenChangeCleanupRef.current?.();
+      if (details.addEventListener) {
+        const onScreensChange = () => {
+          const nextExternal = details.screens.find((screen) => screen !== details.currentScreen) ?? null;
+          externalScreenRef.current = nextExternal;
+          const activeOutput = extendedWindowRef.current;
+          if (nextExternal && activeOutput && !activeOutput.closed) {
+            activeOutput.moveTo(nextExternal.availLeft, nextExternal.availTop);
+            activeOutput.resizeTo(nextExternal.availWidth, nextExternal.availHeight);
+          }
+        };
+        details.addEventListener("screenschange", onScreensChange);
+        screenChangeCleanupRef.current = () => details.removeEventListener?.("screenschange", onScreensChange);
+      }
+      return details;
+    } catch {
+      // The fallback below still opens the output window when the browser does
+      // not support Window Management or the permission is denied.
+      return null;
+    }
+  };
+
+  const openExtendedPresentation = async (song: Song) => {
     // Prepare the presenter state first, then open the output window from the
     // same click so the current/next controls and output stay synchronized.
     setExtendedSong(song);
+    await refreshScreenDetails();
     openOutputWindow();
     if (parseSlideImages(song.slideImages).length === 0 && song.fileKey) {
       setPreparingSongId(song.id);
@@ -627,15 +665,11 @@ export default function Home() {
       popup.focus();
     };
     enterFullscreen();
-    const getScreenDetails = (window as unknown as { getScreenDetails?: () => Promise<{ currentScreen?: unknown; screens: Array<{ availLeft: number; availTop: number; availWidth: number; availHeight: number }> }> }).getScreenDetails;
-    if (getScreenDetails) {
-      void getScreenDetails().then((details) => {
-        const external = details.screens.find((screen) => screen !== details.currentScreen);
-        if (!external || popup.closed) return;
-        popup.moveTo(external.availLeft, external.availTop);
-        popup.resizeTo(external.availWidth, external.availHeight);
-        enterFullscreen();
-      }).catch(() => undefined);
+    const external = externalScreenRef.current;
+    if (external && !popup.closed) {
+      popup.moveTo(external.availLeft, external.availTop);
+      popup.resizeTo(external.availWidth, external.availHeight);
+      enterFullscreen();
     }
   };
 
