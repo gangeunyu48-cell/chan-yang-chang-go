@@ -691,18 +691,41 @@ export default function Home() {
   };
 
   const openExtendedPresentation = async (song: Song) => {
-    // Prepare the presenter state first, then open the output window from the
-    // same click so the current/next controls and output stay synchronized.
+    // Open a blank output window synchronously while the click still has user
+    // activation. Waiting for getScreenDetails() first can make browsers block
+    // the popup even though the action started from the extension button.
     setExtendedSong(song);
+    let popup = extendedWindowRef.current;
+    if (!popup || popup.closed) {
+      popup = window.open("", "changgo-extended-output", "popup=yes,width=1280,height=720");
+      if (!popup) {
+        toast.error("송출 화면 창이 차단되었어요. 브라우저에서 팝업을 허용해 주세요.");
+        setExtendedSong(null);
+        return;
+      }
+      extendedWindowRef.current = popup;
+      setOutputWindow(popup);
+      popup.document.title = "찬양창고 송출 화면";
+      popup.document.body.innerHTML = "<p style=\"font:14px sans-serif;text-align:center;margin-top:20vh;color:#9aa;background:#05080b\">송출 화면을 준비하는 중이에요</p>";
+    } else {
+      popup.focus();
+      setOutputWindow(popup);
+    }
+
     await refreshScreenDetails();
     if (!externalScreenRef.current) {
-      if (extendedWindowRef.current && !extendedWindowRef.current.closed) extendedWindowRef.current.close();
+      if (popup && !popup.closed) popup.close();
       extendedWindowRef.current = null;
       setOutputWindow(null);
       toast.info("확장 모니터가 없어 이 화면에서 전체화면으로 발표합니다.");
       document.documentElement.requestFullscreen?.().catch(() => undefined);
     } else {
-      openOutputWindow();
+      const external = externalScreenRef.current;
+      if (external && !popup.closed) {
+        popup.moveTo(external.availLeft, external.availTop);
+        popup.resizeTo(external.availWidth, external.availHeight);
+        popup.focus();
+      }
     }
     if (parseSlideImages(song.slideImages).length === 0 && song.fileKey) {
       setPreparingSongId(song.id);
