@@ -660,7 +660,20 @@ export default function Home() {
   const refreshScreenDetails = async () => {
     const browserWindow = window as Window & { getScreenDetails?: () => Promise<ScreenDetailsLike> };
     externalScreenRef.current = null;
-    if (!browserWindow.getScreenDetails) return null;
+    const browserScreen = window.screen as unknown as PresentationScreen & { isExtended?: boolean };
+    // Older Chromium builds expose screen.isExtended but not getScreenDetails.
+    // Keep the click-opened popup alive and place it to the right as a fallback.
+    if (!browserWindow.getScreenDetails) {
+      if (browserScreen.isExtended) {
+        externalScreenRef.current = {
+          availLeft: browserScreen.availLeft + browserScreen.availWidth,
+          availTop: browserScreen.availTop,
+          availWidth: browserScreen.availWidth,
+          availHeight: browserScreen.availHeight,
+        };
+      }
+      return null;
+    }
     try {
       const permissionQuery = navigator.permissions?.query as ((descriptor: { name: string }) => Promise<PermissionStatus>) | undefined;
       if (permissionQuery) await permissionQuery({ name: "window-management" });
@@ -683,9 +696,19 @@ export default function Home() {
         screenChangeCleanupRef.current = () => details.removeEventListener?.("screenschange", onScreensChange);
       }
       return details;
-    } catch {
-      // The fallback below still opens the output window when the browser does
-      // not support Window Management or the permission is denied.
+    } catch (error) {
+      // A permission prompt or a browser implementation error should not make
+      // the already-opened output popup disappear when the OS reports an
+      // extended desktop.
+      if (browserScreen.isExtended) {
+        externalScreenRef.current = {
+          availLeft: browserScreen.availLeft + browserScreen.availWidth,
+          availTop: browserScreen.availTop,
+          availWidth: browserScreen.availWidth,
+          availHeight: browserScreen.availHeight,
+        };
+      }
+      console.warn("[찬양창고] 모니터 정보를 읽지 못했습니다.", error);
       return null;
     }
   };
