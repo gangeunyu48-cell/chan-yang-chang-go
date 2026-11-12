@@ -105,6 +105,7 @@ button:focus-visible, input:focus-visible { outline: 3px solid rgba(208, 161, 82
 .avatar { display: grid; place-items: center; width: 31px; height: 31px; color: #fffaf2; background: #b68f5a; border-radius: 50%; font-family: 'Gowun Batang', serif; font-size: 13px; font-weight: 700; }
 .page-wrap { width: min(1240px, 100%); margin: 0 auto; padding: 60px clamp(28px, 5vw, 72px) 34px; }
 .page-wrap { padding-top: 34px; }
+.admin-upload-button{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 10px;color:#182637;background:#d3a65d;border:1px solid #d3a65d;border-radius:7px;font-size:10px;font-weight:800;cursor:pointer;white-space:nowrap}.admin-upload-button:hover{background:#edc87e;border-color:#edc87e}.admin-upload-button-secondary{color:#d9bf88;background:rgba(255,255,255,.06);border-color:rgba(218,180,102,.3)}.admin-upload-button-secondary:hover{color:#f1d18c;background:rgba(218,180,102,.13)}
 .hero-row { position: relative; display: flex; justify-content: space-between; min-height: 223px; }
 .eyebrow, .section-kicker { color: #af9670; font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 500; letter-spacing: .14em; }
 .eyebrow { display: flex; align-items: center; gap: 8px; margin-bottom: 19px; }
