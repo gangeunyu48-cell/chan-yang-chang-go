@@ -112,7 +112,7 @@ export const appRouter = router({
       const file = await saveFile(fileInputValue);
       return createSong({ ...songInput, ...file });
     }),
-    bulkCreate: publicProcedure.input(z.object({ adminPassword: z.string().min(1), category: z.enum(categories), files: z.array(bulkFileInput).min(1).max(700) })).mutation(async ({ input }) => {
+    bulkCreate: publicProcedure.input(z.object({ adminPassword: z.string().min(1), category: z.enum(categories), files: z.array(bulkFileInput).min(1).max(4000) })).mutation(async ({ input }) => {
       assertAdminPassword(input.adminPassword);
       const results = [];
       const existingHymns = new Set((await listSongs()).filter((song) => song.category === "찬송가" && song.hymnNumber).map((song) => song.hymnNumber as number));

@@ -378,15 +378,15 @@ function BulkUploadModal({ onClose, onSubmit, saving, progress }: { onClose: () 
   const chooseFiles = (event: ChangeEvent<HTMLInputElement>) => {
     const selected = Array.from(event.target.files ?? []);
     const valid = selected.filter((file) => /\.(ppt|pptx|pdf)$/i.test(file.name) && file.size <= 50 * 1024 * 1024);
-    if (selected.length > 700) toast.error("한 번에 최대 700개까지 올릴 수 있어요.");
+    if (selected.length > 4000) toast.error("한 번에 최대 4,000개까지 올릴 수 있어요.");
     if (valid.length !== selected.length) toast.error("PPT, PPTX, PDF 형식이며 파일당 50MB 이하인 파일만 포함했어요.");
-    setFiles(valid.slice(0, 700));
+    setFiles(valid.slice(0, 4000));
   };
   return (
     <div className="modal-backdrop" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) onClose(); }}>
       <form className="upload-modal bulk-modal" onSubmit={(event) => { event.preventDefault(); if (!files.length) { toast.error("업로드할 파일을 선택해 주세요."); return; } onSubmit(files, category); }}>
-        <div className="modal-header"><div><div className="section-kicker">BULK UPLOAD</div><h2>곡 700개 일괄 추가</h2></div><button type="button" className="icon-button" onClick={onClose} disabled={saving} aria-label="닫기"><X size={19} /></button></div>
-        <div className="bulk-dropzone"><FileUp size={25} /><strong>PPT 파일을 한 번에 선택하세요</strong><span>파일명에서 곡 이름을 자동으로 만들어요 · 최대 700개 · 파일당 50MB</span><label className="bulk-file-button">{files.length ? `${files.length}개 선택됨` : "파일 700개 선택"}<input type="file" multiple accept=".ppt,.pptx,.pdf" onChange={chooseFiles} disabled={saving} /></label></div>
+        <div className="modal-header"><div><div className="section-kicker">BULK UPLOAD</div><h2>곡 4,000개 일괄 추가</h2></div><button type="button" className="icon-button" onClick={onClose} disabled={saving} aria-label="닫기"><X size={19} /></button></div>
+        <div className="bulk-dropzone"><FileUp size={25} /><strong>PPT 파일을 한 번에 선택하세요</strong><span>파일명에서 곡 이름을 자동으로 만들어요 · 최대 4,000개 · 파일당 50MB</span><label className="bulk-file-button">{files.length ? `${files.length}개 선택됨` : "파일 4,000개 선택"}<input type="file" multiple accept=".ppt,.pptx,.pdf" onChange={chooseFiles} disabled={saving} /></label></div>
         {files.length > 0 && <div className="bulk-file-summary"><span>{files[0]?.name}</span>{files.length > 1 && <span>외 {files.length - 1}개</span>}</div>}
         <label className="bulk-category-label">전체 분류<select value={category} onChange={(event) => setCategory(event.target.value as "찬송가" | "CCM")} disabled={saving}><option value="CCM">CCM</option><option value="찬송가">찬송가</option></select></label>
         {saving && <div className="bulk-progress"><div className="bulk-progress-head"><span>업로드 중...</span><strong>{progress.done} / {progress.total}</strong></div><div className="bulk-progress-track"><span style={{ width: `${progress.total ? (progress.done / progress.total) * 100 : 0}%` }} /></div></div>}
