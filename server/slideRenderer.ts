@@ -40,12 +40,13 @@ export async function renderSlideImages(bytes: Buffer, fileName: string): Promis
     }
     if (extension !== ".pdf" && extension !== ".ppt" && extension !== ".pptx") return [];
 
-    // Prefer sharp output, but retry at a lighter resolution for very large or
-    // complex church PPTs so one problematic deck does not fail completely.
+    // Use a practical church-screen resolution first so every uploaded song can
+    // be prepared within the hosted server's memory/time limit. Retry even
+    // lighter for unusually large or complex decks.
     try {
-      await execFileAsync("pdftoppm", ["-png", "-r", "220", pdfPath, outputPrefix], { timeout: 180_000 });
-    } catch {
       await execFileAsync("pdftoppm", ["-png", "-r", "120", pdfPath, outputPrefix], { timeout: 180_000 });
+    } catch {
+      await execFileAsync("pdftoppm", ["-png", "-r", "72", pdfPath, outputPrefix], { timeout: 180_000 });
     }
     const renderedNames = (await readdir(workDir)).filter((name) => /^slide-\d+\.png$/i.test(name)).sort(naturalSort);
     const urls: string[] = [];
