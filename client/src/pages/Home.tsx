@@ -451,12 +451,25 @@ function SongEditor({
 export default function Home() {
   const songsQuery = trpc.songs.list.useQuery(undefined, { refetchInterval: 3000, refetchOnWindowFocus: true });
   const [cachedSongs, setCachedSongs] = useState<Song[]>(() => {
-    try { return JSON.parse(localStorage.getItem("changgo-songs-cache") || "[]") as Song[]; } catch { return []; }
+    try {
+      const cached = JSON.parse(localStorage.getItem("changgo-songs-cache") || "[]");
+      return Array.isArray(cached) ? cached as Song[] : [];
+    } catch {
+      localStorage.removeItem("changgo-songs-cache");
+      return [];
+    }
   });
   useEffect(() => {
     if (songsQuery.data) {
       setCachedSongs(songsQuery.data);
-      localStorage.setItem("changgo-songs-cache", JSON.stringify(songsQuery.data));
+      // Never cache rendered slide images: thousands of PPT previews can exceed
+      // Safari/iOS localStorage quota and crash the whole React tree.
+      const lightweightSongs = songsQuery.data.map(({ slideImages: _slideImages, ...song }) => ({ ...song, slideImages: null }));
+      try {
+        localStorage.setItem("changgo-songs-cache", JSON.stringify(lightweightSongs));
+      } catch {
+        try { localStorage.removeItem("changgo-songs-cache"); } catch { /* storage may be unavailable */ }
+      }
     }
   }, [songsQuery.data]);
   const utils = trpc.useUtils();
