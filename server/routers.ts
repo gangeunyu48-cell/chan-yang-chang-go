@@ -139,7 +139,7 @@ export const appRouter = router({
       if (!rendered.length) throw new Error("PPT를 슬라이드 이미지로 변환하지 못했어요.");
       return updateSong(input.id, { slideImages: JSON.stringify(rendered), slideCount: rendered.length });
     }),
-    prepareManySlides: publicProcedure.input(z.object({ ids: z.array(z.number().int().positive()).min(1).max(700) })).mutation(async ({ input }) => {
+    prepareManySlides: publicProcedure.input(z.object({ ids: z.array(z.number().int().positive()).min(1).max(4000) })).mutation(async ({ input }) => {
       const results = [];
       for (const id of input.ids) {
         const current = await getSongById(id);

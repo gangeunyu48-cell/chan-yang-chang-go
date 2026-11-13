@@ -30,6 +30,7 @@ import {
   Search,
   Settings,
   ShieldCheck,
+  Sparkles,
   Smartphone,
   Trash2,
   UploadCloud,
@@ -575,7 +576,8 @@ export default function Home() {
   };
 
   const prepareAllStoredSlides = async () => {
-    const missing = songs.filter((song) => !song.slideImages && song.fileKey);
+    const latestSongs = await utils.songs.list.fetch();
+    const missing = latestSongs.filter((song) => !song.slideImages && song.fileKey);
     if (!missing.length) {
       toast.success("모든 저장된 곡의 슬라이드가 이미 준비되어 있어요.");
       return;
@@ -811,8 +813,9 @@ export default function Home() {
       }
       await sendBatch();
       await utils.songs.list.invalidate();
-      toast.success(`${files.length}개 파일을 저장했어요. 필요하면 '전체 PPT 준비' 버튼으로 슬라이드를 만들 수 있어요.`);
+      toast.success(`${files.length}개 파일을 저장했어요. PPT 슬라이드 변환을 시작합니다.`);
       setBulkOpen(false);
+      setTimeout(() => { void prepareAllStoredSlides(); }, 0);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "일괄 업로드에 실패했어요.");
     } finally {
@@ -886,7 +889,7 @@ export default function Home() {
       </aside>
 
       <main className="main-content">
-        <header className="topbar"><div className="breadcrumb"><span className="breadcrumb-muted">Library</span><ChevronRight size={14} /><span>{activeCategory}</span></div><div className="topbar-actions"><span className="live-status"><span /> 실시간 동기화</span>{playlistSongs.length >= 2 && <button className="playlist-connect-button" onClick={startPlaylist} title="선택한 PPT 연결 재생"><Link2 size={15} /> PPT 연결 재생 <span>{playlistSongs.length}</span></button>}<button className={`admin-mode-button ${adminPassword ? "active" : ""}`} onClick={() => adminPassword ? setAdminPassword("") : openAdminGate()}><span className="admin-mode-icon">{adminPassword ? <ShieldCheck size={14} /> : <LockKeyhole size={14} />}</span>{adminPassword ? "관리자 모드 ON" : "관리자 모드"}</button>{adminPassword && <><button className="admin-upload-button" onClick={() => openEditor(null)} title="PPT 한 곡 추가"><FileUp size={14} /> PPT 추가</button><button className="admin-upload-button admin-upload-button-secondary" onClick={() => setBulkOpen(true)} title="최대 4,000개 일괄 업로드"><UploadCloud size={14} /> 4,000개 업로드</button></>}<button className="top-icon-button" onClick={() => songsQuery.refetch()} aria-label="새로고침" title="새로고침"><RefreshCw size={18} /></button><button className={`top-icon-button ${settingsOpen ? "settings-active" : ""}`} onClick={() => setSettingsOpen((value) => !value)} aria-label="설정" title="설정"><Settings size={18} /></button></div></header>
+        <header className="topbar"><div className="breadcrumb"><span className="breadcrumb-muted">Library</span><ChevronRight size={14} /><span>{activeCategory}</span></div><div className="topbar-actions"><span className="live-status"><span /> 실시간 동기화</span>{playlistSongs.length >= 2 && <button className="playlist-connect-button" onClick={startPlaylist} title="선택한 PPT 연결 재생"><Link2 size={15} /> PPT 연결 재생 <span>{playlistSongs.length}</span></button>}<button className={`admin-mode-button ${adminPassword ? "active" : ""}`} onClick={() => adminPassword ? setAdminPassword("") : openAdminGate()}><span className="admin-mode-icon">{adminPassword ? <ShieldCheck size={14} /> : <LockKeyhole size={14} />}</span>{adminPassword ? "관리자 모드 ON" : "관리자 모드"}</button>{adminPassword && <><button className="admin-upload-button" onClick={() => openEditor(null)} title="PPT 한 곡 추가"><FileUp size={14} /> PPT 추가</button><button className="admin-upload-button admin-upload-button-secondary" onClick={() => setBulkOpen(true)} title="최대 4,000개 일괄 업로드"><UploadCloud size={14} /> 4,000개 업로드</button><button className="admin-upload-button admin-upload-button-secondary" onClick={() => { void prepareAllStoredSlides(); }} disabled={prepareManySlides.isPending} title="저장된 PPT를 슬라이드쇼용 이미지로 변환"><Sparkles size={14} /> {prepareManySlides.isPending || prepareAllProgress.total ? `PPT 변환 ${prepareAllProgress.done}/${prepareAllProgress.total}` : "PPT 전체 변환"}</button></>}<button className="top-icon-button" onClick={() => songsQuery.refetch()} aria-label="새로고침" title="새로고침"><RefreshCw size={18} /></button><button className={`top-icon-button ${settingsOpen ? "settings-active" : ""}`} onClick={() => setSettingsOpen((value) => !value)} aria-label="설정" title="설정"><Settings size={18} /></button></div></header>
         {settingsOpen && <section className="settings-panel" role="dialog" aria-label="앱 설정" onClick={(event) => event.stopPropagation()}>
           <div className="settings-panel-head"><div><span className="section-kicker">APP SETTINGS</span><h3>찬양창고 설정</h3><p>보기 편한 화면으로 맞춰 보세요.</p></div><button className="settings-close" onClick={() => setSettingsOpen(false)} aria-label="설정 닫기"><X size={16} /></button></div>
           <div className="settings-group"><strong>화면 모드</strong><div className="settings-segment"><button className={appSettings.theme === "light" ? "selected" : ""} onClick={() => updateSettings("theme", "light")}>☼ 화이트</button><button className={appSettings.theme === "dark" ? "selected" : ""} onClick={() => updateSettings("theme", "dark")}>● 블랙</button></div></div>
