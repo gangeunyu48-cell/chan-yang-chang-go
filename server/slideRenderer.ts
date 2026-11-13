@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { access, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { basename, extname, join } from "node:path";
 import { promisify } from "node:util";
@@ -25,13 +25,28 @@ export async function renderSlideImages(bytes: Buffer, fileName: string): Promis
     let pdfPath = sourcePath;
     if (extension === ".ppt" || extension === ".pptx") {
       const profileDir = join(workDir, "libreoffice-profile");
-      await execFileAsync("libreoffice", [`-env:UserInstallation=file://${profileDir}`, "--headless", "--norestore", "--nolockcheck", "--nodefault", "--convert-to", "pdf", "--outdir", workDir, sourcePath], { timeout: 180_000 });
-      pdfPath = join(workDir, `${stem}.pdf`);
+      await execFileAsync("libreoffice", [`-env:UserInstallation=file://${profileDir}`, "--headless", "--norestore", "--nolockcheck", "--nodefault", "--convert-to", "pdf:impress_pdf_Export", "--outdir", workDir, sourcePath], { timeout: 180_000 });
+      const expectedPdf = join(workDir, `${stem}.pdf`);
+      try {
+        await access(expectedPdf);
+        pdfPath = expectedPdf;
+      } catch {
+        // LibreOffice can normalize non-ASCII names differently. Use the only
+        // generated PDF instead of assuming the output filename.
+        const generatedPdf = (await readdir(workDir)).find((name) => name.toLowerCase().endsWith(".pdf"));
+        if (!generatedPdf) throw new Error("LibreOffice가 PDF를 만들지 못했어요.");
+        pdfPath = join(workDir, generatedPdf);
+      }
     }
     if (extension !== ".pdf" && extension !== ".ppt" && extension !== ".pptx") return [];
 
-    // PNG is lossless; 220 DPI keeps Korean lyrics and music notation sharp on large church screens.
-    await execFileAsync("pdftoppm", ["-png", "-r", "220", pdfPath, outputPrefix], { timeout: 180_000 });
+    // Prefer sharp output, but retry at a lighter resolution for very large or
+    // complex church PPTs so one problematic deck does not fail completely.
+    try {
+      await execFileAsync("pdftoppm", ["-png", "-r", "220", pdfPath, outputPrefix], { timeout: 180_000 });
+    } catch {
+      await execFileAsync("pdftoppm", ["-png", "-r", "120", pdfPath, outputPrefix], { timeout: 180_000 });
+    }
     const renderedNames = (await readdir(workDir)).filter((name) => /^slide-\d+\.png$/i.test(name)).sort(naturalSort);
     const urls: string[] = [];
     for (const name of renderedNames) {
