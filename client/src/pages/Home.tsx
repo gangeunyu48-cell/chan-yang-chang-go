@@ -251,7 +251,10 @@ function ExtendedPresentationMode({ song, playlist = [song], outputWindow, onOpe
   const [slide, setSlide] = useState(1);
   const slideNumberBuffer = useRef("");
   const slideNumberTimer = useRef<number | null>(null);
-  const [showSlideOverview, setShowSlideOverview] = useState(false);
+  // The monitor icon next to 슬라이드쇼 opens the presenter with every slide
+  // visible, matching the original workflow. Selecting a thumbnail still sends
+  // only that one slide to the output window.
+  const [showSlideOverview, setShowSlideOverview] = useState(true);
   const [showPlaylistOverview, setShowPlaylistOverview] = useState(false);
   const [outputNotice, setOutputNotice] = useState("PPT를 클릭하면 외부 송출 화면만 전환됩니다.");
   const currentSong = playlist[songIndex] ?? song;
