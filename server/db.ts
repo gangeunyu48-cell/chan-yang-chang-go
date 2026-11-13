@@ -92,7 +92,26 @@ export async function getUserByOpenId(openId: string) {
 export async function listSongs(): Promise<Song[]> {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(songs).orderBy(desc(songs.updatedAt));
+  const result = await db.select({
+    id: songs.id,
+    title: songs.title,
+    category: songs.category,
+    hymnNumber: songs.hymnNumber,
+    tone: songs.tone,
+    slideCount: songs.slideCount,
+    fileName: songs.fileName,
+    fileKey: songs.fileKey,
+    fileUrl: songs.fileUrl,
+    youtubeUrl: songs.youtubeUrl,
+    mimeType: songs.mimeType,
+    fileSize: songs.fileSize,
+    color: songs.color,
+    createdAt: songs.createdAt,
+    updatedAt: songs.updatedAt,
+  }).from(songs).orderBy(desc(songs.updatedAt));
+  // The list is used by the library screen. Keep rendered slide images out of
+  // this response; a single song is loaded and prepared only when presented.
+  return result.map((song) => ({ ...song, slideImages: null })) as Song[];
 }
 
 export async function getSongById(id: number): Promise<Song | undefined> {

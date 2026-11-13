@@ -91,6 +91,21 @@ function inferHymnNumber(fileName: string): number | null {
   return Number.isInteger(number) && number >= 1 && number <= 999 ? number : null;
 }
 
+function songDuplicateKey(song: { category: string; hymnNumber?: number | null; fileName?: string | null; title: string }) {
+  if (song.category === "찬송가" && song.hymnNumber) return `hymn:${song.hymnNumber}`;
+  return `${song.category}:${(song.fileName || song.title).trim().toLocaleLowerCase()}`;
+}
+
+function uniqueSongs<T extends { category: string; hymnNumber?: number | null; fileName?: string | null; title: string }>(songs: T[]) {
+  const seen = new Set<string>();
+  return songs.filter((song) => {
+    const key = songDuplicateKey(song);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 export const appRouter = router({
   system: systemRouter,
   auth: router({
@@ -105,7 +120,7 @@ export const appRouter = router({
     verify: publicProcedure.input(z.object({ password: z.string() })).query(({ input }) => ({ valid: isAdminPasswordValid(input.password) })),
   }),
   songs: router({
-    list: publicProcedure.query(() => listSongs()),
+    list: publicProcedure.query(async () => uniqueSongs(await listSongs())),
     create: publicProcedure.input(songFields.extend({ adminPassword: z.string().min(1), file: fileInput })).mutation(async ({ input }) => {
       assertAdminPassword(input.adminPassword);
       const { file: fileInputValue, adminPassword: _adminPassword, ...songInput } = input;
@@ -115,15 +130,19 @@ export const appRouter = router({
     bulkCreate: publicProcedure.input(z.object({ adminPassword: z.string().min(1), category: z.enum(categories), files: z.array(bulkFileInput).min(1).max(4000) })).mutation(async ({ input }) => {
       assertAdminPassword(input.adminPassword);
       const results = [];
-      const existingHymns = new Set((await listSongs()).filter((song) => song.category === "찬송가" && song.hymnNumber).map((song) => song.hymnNumber as number));
+      const existingSongs = await listSongs();
+      const existingHymns = new Set(existingSongs.filter((song) => song.category === "찬송가" && song.hymnNumber).map((song) => song.hymnNumber as number));
+      const existingFiles = new Set(existingSongs.map((song) => `${song.category}:${(song.fileName || song.title).replace(/\.(pptx?|pdf)$/i, "").replace(/[_-]+/g, " ").trim().toLocaleLowerCase()}`));
       for (let index = 0; index < input.files.length; index += 1) {
         const file = input.files[index];
         const hymnNumber = input.category === "찬송가" ? inferHymnNumber(file.fileName) : null;
-        if (hymnNumber && existingHymns.has(hymnNumber)) continue;
+        const fileKey = `${input.category}:${file.fileName.replace(/\.(pptx?|pdf)$/i, "").replace(/[_-]+/g, " ").trim().toLocaleLowerCase()}`;
+        if ((hymnNumber && existingHymns.has(hymnNumber)) || existingFiles.has(fileKey)) continue;
         const stored = await saveFile(file, false);
         const title = file.fileName.replace(/\.(pptx?|pdf)$/i, "").replace(/[_-]+/g, " ").trim();
         results.push(await createSong({ title: title || `새 곡 ${index + 1}`, category: input.category, hymnNumber, slideCount: 1, color: colors[index % colors.length], ...stored }));
         if (hymnNumber) existingHymns.add(hymnNumber);
+        existingFiles.add(fileKey);
       }
       return results;
     }),
