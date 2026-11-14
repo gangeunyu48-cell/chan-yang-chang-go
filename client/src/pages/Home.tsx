@@ -629,15 +629,22 @@ export default function Home() {
     // Request fullscreen during the button's user-activation window. Calling
     // this only from PresentationMode's effect is rejected by most browsers.
     document.documentElement.requestFullscreen?.().catch(() => undefined);
+    // Open the presentation immediately. If this song still needs rendering,
+    // the same presentation stays visible with its loading state and is
+    // replaced by the real slides as soon as prepareSlides finishes.
+    setPlayingSong(song);
     if (parseSlideImages(song.slideImages).length === 0 && song.fileKey) {
       setPreparingSongId(song.id);
       prepareSlides.mutate({ id: song.id }, {
-        onSuccess: (updated) => { setPlaylistSongs((current) => current.map((item) => item.id === updated.id ? updated : item)); setPlayingSong(updated); setPreparingSongId(null); },
-        onError: (error) => { setPreparingSongId(null); toast.error(error.message || "PPT 슬라이드를 준비하지 못했어요."); },
+        onSuccess: (updated) => {
+          setPlaylistSongs((current) => current.map((item) => item.id === updated.id ? updated : item));
+          setPlayingSong(updated);
+          setPreparingSongId(null);
+        },
+        onError: (error) => { setPreparingSongId(null); setPlayingSong(null); toast.error(error.message || "PPT 슬라이드를 준비하지 못했어요."); },
       });
       return;
     }
-    setPlayingSong(song);
   };
 
   const addToPlaylist = (song: Song) => {
