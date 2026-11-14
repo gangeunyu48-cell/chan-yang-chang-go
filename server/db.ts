@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { InsertSong, InsertUser, Song, songs, users } from "../drizzle/schema";
 import { ENV } from './_core/env';
@@ -108,6 +108,7 @@ export async function listSongs(): Promise<Song[]> {
     color: songs.color,
     createdAt: songs.createdAt,
     updatedAt: songs.updatedAt,
+    slidesReady: sql<boolean>`CASE WHEN ${songs.slideImages} IS NULL OR ${songs.slideImages} = '' THEN false ELSE true END`,
   }).from(songs).orderBy(desc(songs.updatedAt));
   // The list is used by the library screen. Keep rendered slide images out of
   // this response; a single song is loaded and prepared only when presented.

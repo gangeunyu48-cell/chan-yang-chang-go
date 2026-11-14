@@ -161,13 +161,19 @@ export const appRouter = router({
     prepareManySlides: publicProcedure.input(z.object({ ids: z.array(z.number().int().positive()).min(1).max(4000) })).mutation(async ({ input }) => {
       const results = [];
       for (const id of input.ids) {
-        const current = await getSongById(id);
-        if (!current || hasRenderedSlides(current.slideImages) || !current.fileKey) continue;
-        const signedUrl = await storageGetSignedUrl(current.fileKey);
-        const response = await fetch(signedUrl);
-        if (!response.ok) continue;
-        const rendered = await renderWithRetry(Buffer.from(await response.arrayBuffer()), current.fileName ?? `${current.title}.pptx`);
-        if (rendered.length) results.push(await updateSong(id, { slideImages: JSON.stringify(rendered), slideCount: rendered.length }));
+        // Keep processing the rest of the batch when one damaged or unusual
+        // deck fails. A single CCM file must never block every song after it.
+        try {
+          const current = await getSongById(id);
+          if (!current || hasRenderedSlides(current.slideImages) || !current.fileKey) continue;
+          const signedUrl = await storageGetSignedUrl(current.fileKey);
+          const response = await fetch(signedUrl);
+          if (!response.ok) continue;
+          const rendered = await renderWithRetry(Buffer.from(await response.arrayBuffer()), current.fileName ?? `${current.title}.pptx`);
+          if (rendered.length) results.push(await updateSong(id, { slideImages: JSON.stringify(rendered), slideCount: rendered.length }));
+        } catch (error) {
+          console.warn(`[Slides] Skipping song ${id} during bulk preparation:`, error instanceof Error ? error.message : error);
+        }
       }
       return results;
     }),

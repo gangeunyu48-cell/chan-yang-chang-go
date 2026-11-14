@@ -1,4 +1,4 @@
-import { ChangeEvent, DragEvent, FormEvent, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
+import { ChangeEvent, DragEvent, FormEvent, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import type { TouchEvent as ReactTouchEvent } from "react";
 import { createPortal } from "react-dom";
 import type { inferRouterOutputs } from "@trpc/server";
@@ -41,7 +41,7 @@ import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
 import type { AppRouter } from "../../../server/routers";
 
-type Song = inferRouterOutputs<AppRouter>["songs"]["list"][number];
+type Song = inferRouterOutputs<AppRouter>["songs"]["list"][number] & { slidesReady?: boolean };
 type Category = "전체 악보" | "찬송가" | "CCM";
 type AppSettings = { theme: "light" | "dark"; background: "ivory" | "mist" | "sage" | "lavender"; fontScale: "small" | "medium" | "large"; showPreview: boolean; layoutMode: "mobile" | "laptop" };
 type FormState = { title: string; category: "찬송가" | "CCM"; hymnNumber: string; slideCount: string; youtubeUrl: string };
@@ -188,17 +188,20 @@ function PresentationMode({ song, playlist = [song], onClose, preparing = false 
     };
   }, []);
 
-  const moveNext = () => {
+  const moveNext = useCallback(() => {
     if (slide < totalSlides) setSlide((value) => value + 1);
     else if (songIndex < playlist.length - 1) { setSongIndex((value) => value + 1); setSlide(1); }
-  };
-  const movePrevious = () => {
+  }, [playlist.length, slide, songIndex, totalSlides]);
+  const movePrevious = useCallback(() => {
     if (slide > 1) setSlide((value) => value - 1);
     else if (songIndex > 0) { setSongIndex((value) => value - 1); setSlide(1); }
-  };
+  }, [playlist.length, slide, songIndex]);
 
   useEffect(() => {
     stageRef.current?.requestFullscreen?.().catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
       if (event.key === "ArrowRight" || event.key === " ") moveNext();
@@ -218,7 +221,7 @@ function PresentationMode({ song, playlist = [song], onClose, preparing = false 
       window.removeEventListener("keydown", onKeyDown);
       if (slideNumberTimer.current) window.clearTimeout(slideNumberTimer.current);
     };
-  });
+  }, [moveNext, movePrevious, onClose, totalSlides]);
 
   useEffect(() => {
     slideImages.forEach((src) => { const preload = new Image(); preload.decoding = "async"; preload.src = src; });
@@ -265,14 +268,14 @@ function ExtendedPresentationMode({ song, playlist = [song], outputWindow, onOpe
   const next = slideImages[slide] ?? parseSlideImages(playlist[songIndex + 1]?.slideImages)[0];
   const allPlaylistSlides = playlist.flatMap((item, itemIndex) => parseSlideImages(item.slideImages).map((src, slideIndex) => ({ item, itemIndex, slideIndex, src })));
 
-  const moveNext = () => {
+  const moveNext = useCallback(() => {
     if (slide < totalSlides) setSlide((value) => value + 1);
     else if (songIndex < playlist.length - 1) { setSongIndex((value) => value + 1); setSlide(1); }
-  };
-  const movePrevious = () => {
+  }, [playlist.length, slide, songIndex, totalSlides]);
+  const movePrevious = useCallback(() => {
     if (slide > 1) setSlide((value) => value - 1);
     else if (songIndex > 0) { setSongIndex((value) => value - 1); setSlide(1); }
-  };
+  }, [playlist.length, slide, songIndex]);
 
   useEffect(() => {
     slideImages.forEach((src) => { const preload = new Image(); preload.decoding = "async"; preload.src = src; });
@@ -330,7 +333,7 @@ function ExtendedPresentationMode({ song, playlist = [song], outputWindow, onOpe
       outputWindow?.removeEventListener("keydown", onKeyDown);
       if (slideNumberTimer.current) window.clearTimeout(slideNumberTimer.current);
     };
-  });
+  }, [moveNext, movePrevious, onClose, outputWindow, showSlideOverview, totalSlides]);
 
   return (
     <div className="extended-presenter" role="dialog" aria-modal="true" aria-label="확장 PPT 발표 화면">
@@ -592,16 +595,19 @@ export default function Home() {
   };
 
   const prepareAllStoredSlides = async () => {
-    const latestSongs = await utils.songs.list.fetch();
-    const missing = latestSongs.filter((song) => !song.slideImages && song.fileKey);
+    const latestSongs = await utils.songs.list.fetch() as Song[];
+    const missing = latestSongs.filter((song) => !song.slidesReady && song.fileKey);
     if (!missing.length) {
       toast.success("모든 저장된 곡의 슬라이드가 이미 준비되어 있어요.");
       return;
     }
     setPrepareAllProgress({ done: 0, total: missing.length });
     try {
-      for (let index = 0; index < missing.length; index += 20) {
-        const batch = missing.slice(index, index + 20);
+      // Hosted requests have a finite execution window. Three decks per
+      // request keeps long CCM presentations from timing out and lets the
+      // next batch continue even when one file is unusual.
+      for (let index = 0; index < missing.length; index += 3) {
+        const batch = missing.slice(index, index + 3);
         await prepareManySlides.mutateAsync({ ids: batch.map((song) => song.id) });
         setPrepareAllProgress({ done: Math.min(index + batch.length, missing.length), total: missing.length });
       }
